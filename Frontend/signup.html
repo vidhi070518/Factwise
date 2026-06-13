@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign up — Factwise</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <div class="nav-logo" onclick="window.location.href='index.html'" style="cursor:pointer">
+        <span class="logo-mark">F</span>
+        <span class="logo-text">Factwise</span>
+      </div>
+      <div class="nav-links">
+        <a href="index.html" class="nav-link">Home</a>
+        <a href="login.html" class="nav-link">Log in</a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="auth-section">
+    <div class="auth-box">
+
+      <div id="authForm">
+        <div class="auth-header">
+          <h1 class="auth-title">Create your account</h1>
+          <p class="auth-sub">Start checking. No credit card required.</p>
+        </div>
+
+        <div class="auth-fields">
+          <div class="field-group">
+            <label class="field-label">Email</label>
+            <input type="email" id="email" class="field-input" placeholder="you@example.com" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">Password</label>
+            <input type="password" id="password" class="field-input" placeholder="Min. 6 characters" />
+          </div>
+          <p class="auth-error" id="authError"></p>
+          <button class="btn-primary btn-full" id="authBtn" onclick="handleSignup()">Create account</button>
+        </div>
+
+        <p class="auth-switch">
+          Already have an account? <a href="login.html">Log in</a>
+        </p>
+      </div>
+
+      <div id="authSuccess" class="hidden">
+        <div class="success-box">
+          <div class="success-icon">✅</div>
+          <h2 class="success-title">Check your email</h2>
+          <p class="success-sub">We sent a confirmation link to your email. Click it to activate your account, then come back to log in.</p>
+          <button class="btn-primary btn-full" onclick="window.location.href='login.html'">Go to login</button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

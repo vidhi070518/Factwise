@@ -1,0 +1,13 @@
+[
+  {
+    "userId": "test_user_id_99999",
+    "sessionId": "test_session_uuid_12345",
+    "email": "academic@factwise.org",
+    "paymentId": "pay_XYZ987",
+    "orderId": "order_ABC123",
+    "isPro": true,
+    "freeVerifications": 3,
+    "createdAt": "2026-06-12T10:38:34.048Z",
+    "updatedAt": "2026-06-12T10:38:34.095Z"
+  }
+]

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Factwise — Premium AI output verification assistant. Verify AI essays, summaries, and code explanations for researchers, students, and professionals." />
+  <title>Factwise — AI Output Verification Assistant</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+
+  <!-- ── Navigation ── -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <div class="nav-logo" onclick="window.location.href='index.html'" style="cursor:pointer">
+        <span class="logo-mark">F</span>
+        <span class="logo-text">Factwise</span>
+      </div>
+      <div class="nav-links">
+        <a href="#how-it-works" class="nav-link">How it works</a>
+        <a href="#pricing" class="nav-link">Pricing</a>
+        <button class="btn-outline" onclick="scrollToChecker()">Try Free</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Hero ── -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-badge">3 Free Scans included · Designed for Academics & Professionals</div>
+      <h1 class="hero-title">
+        Don't trust AI outputs blindly.<br />
+        <span class="hero-highlight">Verify them.</span>
+      </h1>
+      <p class="hero-sub">
+        Factwise is an AI output verification assistant designed for researchers, students, and professionals. Identify unsupported statements, conflicting information, and potential hallucinations in seconds.
+      </p>
+      <button class="btn-primary hero-cta" onclick="scrollToChecker()">
+        Check your text →
+      </button>
+    </div>
+  </section>
+
+  <!-- ── Checker ── -->
+  <section class="checker-section" id="checker">
+    <div class="checker-inner">
+
+      <!-- Disclaimer box -->
+      <div class="disclaimer-card">
+        <div class="disclaimer-title">
+          <span class="disclaimer-icon">⚠️</span>
+          <span>Research Disclaimer & Critical Review</span>
+        </div>
+        <p>AI language models frequently hallucinate facts, quote non-existent papers, and make unsupported claims. Factwise acts as a verification assistant to highlight claims requiring manual confirmation. We do not represent our ratings as absolute truth; always verify key details before publishing.</p>
+      </div>
+
+      <!-- Main Checker Box -->
+      <div class="checker-box" id="checkerBox">
+        <div class="checker-header">
+          <h2 class="checker-title">Paste your AI-generated text</h2>
+          <span class="checker-counter"><span id="charCount">0</span> / 10000</span>
+        </div>
+        <textarea
+          id="inputText"
+          class="checker-textarea"
+          placeholder="Paste any AI-generated paragraph, summary, paper extract, or answer here..."
+          maxlength="10000"
+          spellcheck="false"
+        ></textarea>
+        <div class="checker-footer">
+          <span class="checker-limit" id="trialCounterText">3 free verifications total</span>
+          <button class="btn-primary" id="verifyBtn" onclick="verifyText()">
+            <span id="btnText">Verify Text</span>
+            <span id="btnLoader" class="btn-loader hidden"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Try Demo Chips -->
+      <div class="demo-section" id="demoSection">
+        <span class="demo-label">Or try an example verification</span>
+        <div class="demo-chips">
+          <button class="demo-chip" onclick="loadDemo('history')">
+            <span class="demo-chip-icon">🏛️</span> History Essay (AI Hallucination)
+          </button>
+          <button class="demo-chip" onclick="loadDemo('health')">
+            <span class="demo-chip-icon">🧪</span> Health Claims (Unsupported Info)
+          </button>
+        </div>
+      </div>
+
+      <!-- Premium Paywall Block (Hidden by default) -->
+      <div id="paywallContainer" class="paywall-banner hidden">
+        <h2 class="paywall-title">🔒 Free Trial Scans Completed (3/3)</h2>
+        <p class="paywall-desc">
+          You have used all 3 free trial verifications. Upgrade to Factwise Pro to verify your research, avoid AI misinformation, and unlock unlimited scans.
+        </p>
+        <div class="paywall-features">
+          <div class="paywall-feature-item">Unlimited verification scans</div>
+          <div class="paywall-feature-item">Full verification history & saving</div>
+          <div class="paywall-feature-item">Detailed quote & source breakdowns</div>
+          <div class="paywall-feature-item">Priority access to Llama 3.3 70B model</div>
+        </div>
+        <button class="btn-primary" onclick="openCheckoutModal()">
+          Upgrade to Pro — ₹299/month
+        </button>
+      </div>
+
+      <!-- Quiet Loading progression tracker (Hidden by default) -->
+      <div id="loadingTracker" class="loading-progress hidden">
+        <div class="progress-step" id="stepParse">
+          <span class="progress-indicator"><span class="progress-check">✓</span></span> Sanitizing and parsing text structures...
+        </div>
+        <div class="progress-step" id="stepExtract">
+          <span class="progress-indicator"><div class="progress-spinner"></div></span> Isolating key claims for verification...
+        </div>
+        <div class="progress-step" id="stepVerify">
+          <span class="progress-indicator"><div class="progress-spinner"></div></span> Cross-referencing claims with verification database...
+        </div>
+        <div class="progress-step" id="stepCompile">
+          <span class="progress-indicator"><div class="progress-spinner"></div></span> Compiling confidence scores and report...
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div id="results" class="results hidden">
+
+        <!-- Overall verdict -->
+        <div class="verdict-card" id="verdictCard">
+          <div class="verdict-top">
+            <div class="verdict-icon" id="verdictIcon"></div>
+            <div>
+              <div class="verdict-label">Credibility Index Rating</div>
+              <div class="verdict-value" id="verdictValue"></div>
+            </div>
+          </div>
+          <p class="verdict-summary" id="verdictSummary"></p>
+        </div>
+
+        <!-- Visual Claim Highlight Breakdown -->
+        <div class="visual-breakdown-card" id="visualBreakdownCard">
+          <h3 class="visual-breakdown-title">
+            <span>🔍</span> Text Highlight Visualizer
+          </h3>
+          <p class="visual-breakdown-text" id="visualBreakdownText"></p>
+          <div class="legend-container">
+            <div class="legend-item"><span class="legend-dot verified"></span> Verified</div>
+            <div class="legend-item"><span class="legend-dot unsupported"></span> Unsupported</div>
+            <div class="legend-item"><span class="legend-dot potentially_inaccurate"></span> Potentially Inaccurate</div>
+            <div class="legend-item"><span class="legend-dot conflicting_info"></span> Conflicting Info</div>
+            <div class="legend-item"><span class="legend-dot requires_human_verification"></span> Requires Human Verification</div>
+          </div>
+        </div>
+
+        <!-- Claims -->
+        <div class="claims-section">
+          <h3 class="claims-title">Claim by Claim Analysis</h3>
+          <div id="claimsList" class="claims-list"></div>
+        </div>
+
+        <!-- Tip -->
+        <div class="tip-card" id="tipCard">
+          <span class="tip-icon">💡</span>
+          <p class="tip-text" id="tipText"></p>
+        </div>
+
+        <!-- Check another -->
+        <button class="btn-outline btn-full" onclick="resetChecker()">
+          Check another text
+        </button>
+
+      </div>
+
+      <!-- Error -->
+      <div id="errorBox" class="error-box hidden">
+        <span class="error-icon">⚠️</span>
+        <p id="errorText"></p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── How it works ── -->
+  <section class="how-section" id="how-it-works">
+    <div class="section-inner">
+      <h2 class="section-title">How Factwise works</h2>
+      <p class="section-sub">Identify questionable details in three simple steps.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">01</div>
+          <h3 class="step-title">Paste AI outputs</h3>
+          <p class="step-desc">Copy and paste any essay draft, summary, paper extract, or AI-generated work into the assistant.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">02</div>
+          <h3 class="step-title">Claim extraction</h3>
+          <p class="step-desc">Our Llama-based agent parses the text to extract concrete assertions, separating opinions from stated facts.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">03</div>
+          <h3 class="step-title">Contextual checking</h3>
+          <p class="step-desc">Claims are checked for support, accuracy, conflicts, or hallucination patterns, highlighting findings inline.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Pricing ── -->
+  <section class="pricing-section" id="pricing">
+    <div class="section-inner">
+      <h2 class="section-title">Simple pricing</h2>
+      <p class="section-sub">Start checking free. Upgrade to Pro for unlimited research verification.</p>
+      <div class="pricing-cards">
+
+        <div class="pricing-card">
+          <div class="pricing-plan">Free Trial</div>
+          <div class="pricing-price">₹0</div>
+          <ul class="pricing-features">
+            <li>✓ 3 free trial verifications total</li>
+            <li>✓ Full claim status breakdown</li>
+            <li>✓ Plain English analysis</li>
+            <li>✓ No signup required</li>
+          </ul>
+          <button class="btn-outline btn-full" onclick="scrollToChecker()">Get started free</button>
+        </div>
+
+        <div class="pricing-card pricing-card-pro">
+          <div class="pricing-badge">Recommended</div>
+          <div class="pricing-plan">Pro</div>
+          <div class="pricing-price">₹299<span>/month</span></div>
+          <ul class="pricing-features">
+            <li>✓ Unlimited verification scans</li>
+            <li>✓ Save verification history logs</li>
+            <li>✓ Interactive text highlighting visualizer</li>
+            <li>✓ Priority Llama-3.3 processing speeds</li>
+            <li>✓ Custom citation & reference notes</li>
+          </ul>
+          <button class="btn-primary btn-full" onclick="openCheckoutModal()">Upgrade to Pro</button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Footer ── -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-logo">
+        <span class="logo-mark">F</span>
+        <span class="logo-text">Factwise</span>
+      </div>
+      <p class="footer-tagline">Your AI output verification assistant.</p>
+      <div class="footer-links">
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+        <a href="#">Contact Support</a>
+      </div>
+      <p class="footer-copy">© 2026 Factwise. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- ── Razorpay Subscription Modal ── -->
+  <div id="checkoutModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <button class="modal-close" onclick="closeCheckoutModal()">×</button>
+      <h2 class="modal-title">Upgrade to Factwise Pro</h2>
+      <p class="modal-sub">Verify research, essays, and reports with absolute confidence.</p>
+      
+      <div style="background: var(--bg-3); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 20px; margin-bottom: 20px; text-align: center;">
+        <span style="font-size: 13px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Pro Unlock Plan</span>
+        <span style="font-size: 36px; font-weight: 700; color: var(--text);">₹299</span>
+        <span style="font-size: 14px; color: var(--text-2); display: block; margin-top: 4px;">Unlimited scans & history</span>
+      </div>
+
+      <div style="margin-bottom: 24px;">
+        <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px;">
+          <li style="font-size: 13px; color: var(--text-2); display: flex; align-items: center; gap: 8px;">
+            <span style="color: var(--verified); font-weight: bold;">✓</span> Unlimited verification scans
+          </li>
+          <li style="font-size: 13px; color: var(--text-2); display: flex; align-items: center; gap: 8px;">
+            <span style="color: var(--verified); font-weight: bold;">✓</span> Full verification history logs
+          </li>
+          <li style="font-size: 13px; color: var(--text-2); display: flex; align-items: center; gap: 8px;">
+            <span style="color: var(--verified); font-weight: bold;">✓</span> Priority Llama-3.3 processing speed
+          </li>
+          <li style="font-size: 13px; color: var(--text-2); display: flex; align-items: center; gap: 8px;">
+            <span style="color: var(--verified); font-weight: bold;">✓</span> Support independent software
+          </li>
+        </ul>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <p class="auth-error" id="checkoutError" style="margin-top: 0; min-height: auto; text-align: center;"></p>
+        <button class="btn-primary btn-full" id="confirmPaymentBtn" onclick="payWithRazorpay()">
+          Upgrade Now
+        </button>
+        <p style="font-size: 11px; color: var(--text-3); text-align: center; line-height: 1.4; margin: 0;">
+          🔒 Secured by Razorpay. Supports UPI, cards, Netbanking & mobile wallets.
+        </p>
+      </div>
+    </div>
+  </div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

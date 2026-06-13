@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Log in — Factwise</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <div class="nav-logo" onclick="window.location.href='index.html'" style="cursor:pointer">
+        <span class="logo-mark">F</span>
+        <span class="logo-text">Factwise</span>
+      </div>
+      <div class="nav-links">
+        <a href="index.html" class="nav-link">Home</a>
+        <button class="btn-primary" onclick="window.location.href='signup.html'">Sign up free</button>
+      </div>
+    </div>
+  </nav>
+
+  <section class="auth-section">
+    <div class="auth-box">
+
+      <div id="authForm">
+        <div class="auth-header">
+          <h1 class="auth-title">Welcome back</h1>
+          <p class="auth-sub">Log in to access your verification history.</p>
+        </div>
+
+        <div class="auth-fields">
+          <div class="field-group">
+            <label class="field-label">Email</label>
+            <input type="email" id="email" class="field-input" placeholder="you@example.com" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">Password</label>
+            <input type="password" id="password" class="field-input" placeholder="••••••••" />
+          </div>
+          <p class="auth-error" id="authError"></p>
+          <button class="btn-primary btn-full" id="authBtn" onclick="handleLogin()">Log in</button>
+        </div>
+
+        <p class="auth-switch">
+          Don't have an account? <a href="signup.html">Sign up free</a>
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

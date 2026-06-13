@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My History — Factwise</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <div class="nav-logo" onclick="window.location.href='index.html'" style="cursor:pointer">
+        <span class="logo-mark">F</span>
+        <span class="logo-text">Factwise</span>
+      </div>
+      <div class="nav-links" id="navLinks"></div>
+    </div>
+  </nav>
+
+  <section class="history-section">
+    <div class="history-inner">
+      <div class="history-header">
+        <h1 class="history-title">My Verifications</h1>
+        <p class="history-sub">Your last 20 fact checks, saved automatically.</p>
+        <button class="btn-primary" onclick="window.location.href='index.html'">
+          + New verification
+        </button>
+      </div>
+      <div id="historyList" class="history-list">
+        <p class="loading-text">Loading...</p>
+      </div>
+    </div>
+  </section>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
