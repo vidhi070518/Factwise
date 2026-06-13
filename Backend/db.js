@@ -99,6 +99,7 @@ async function getOrCreateSubscription({ userId, sessionId, email }) {
           orderId: data.order_id,
           isPro: data.is_pro,
           freeVerifications: data.free_verifications || 0,
+          lastVerificationReset: data.last_verification_reset,
           createdAt: data.created_at,
           updatedAt: data.updated_at
         };
@@ -111,6 +112,7 @@ async function getOrCreateSubscription({ userId, sessionId, email }) {
         email: email || null,
         is_pro: false,
         free_verifications: 0,
+        last_verification_reset: new Date().toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -131,6 +133,7 @@ async function getOrCreateSubscription({ userId, sessionId, email }) {
         orderId: inserted.order_id,
         isPro: inserted.is_pro,
         freeVerifications: inserted.free_verifications || 0,
+        lastVerificationReset: inserted.last_verification_reset,
         createdAt: inserted.created_at,
         updatedAt: inserted.updated_at
       };
@@ -158,6 +161,10 @@ async function getOrCreateSubscription({ userId, sessionId, email }) {
   }
 
   if (sub) {
+    if (!sub.lastVerificationReset) {
+      sub.lastVerificationReset = sub.createdAt || new Date().toISOString();
+      writeLocalSubscriptions(subs);
+    }
     return sub;
   }
 
@@ -170,6 +177,7 @@ async function getOrCreateSubscription({ userId, sessionId, email }) {
     orderId: null,
     isPro: false,
     freeVerifications: 0,
+    lastVerificationReset: new Date().toISOString(),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
@@ -216,6 +224,7 @@ async function activatePro({ userId, sessionId, email, orderId, paymentId }) {
           orderId: updated.order_id,
           isPro: updated.is_pro,
           freeVerifications: updated.free_verifications || 0,
+          lastVerificationReset: updated.last_verification_reset,
           createdAt: updated.created_at,
           updatedAt: updated.updated_at
         };
@@ -228,6 +237,7 @@ async function activatePro({ userId, sessionId, email, orderId, paymentId }) {
           order_id: orderId,
           payment_id: paymentId,
           free_verifications: 0,
+          last_verification_reset: new Date().toISOString(),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
@@ -245,6 +255,7 @@ async function activatePro({ userId, sessionId, email, orderId, paymentId }) {
           orderId: inserted.order_id,
           isPro: inserted.is_pro,
           freeVerifications: inserted.free_verifications || 0,
+          lastVerificationReset: inserted.last_verification_reset,
           createdAt: inserted.created_at,
           updatedAt: inserted.updated_at
         };
@@ -271,6 +282,9 @@ async function activatePro({ userId, sessionId, email, orderId, paymentId }) {
     sub.paymentId = paymentId;
     if (userId) sub.userId = userId;
     if (email) sub.email = email;
+    if (!sub.lastVerificationReset) {
+      sub.lastVerificationReset = new Date().toISOString();
+    }
     sub.updatedAt = new Date().toISOString();
   } else {
     sub = {
@@ -281,6 +295,7 @@ async function activatePro({ userId, sessionId, email, orderId, paymentId }) {
       orderId: orderId,
       isPro: true,
       freeVerifications: 0,
+      lastVerificationReset: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -323,8 +338,37 @@ async function incrementVerificationUsage({ userId, sessionId }) {
           orderId: updated.order_id,
           isPro: updated.is_pro,
           freeVerifications: updated.free_verifications || 0,
+          lastVerificationReset: updated.last_verification_reset,
           createdAt: updated.created_at,
           updatedAt: updated.updated_at
+        };
+      } else {
+        const newRecord = {
+          user_id: userId || null,
+          session_id: sessionId || null,
+          is_pro: false,
+          free_verifications: 1,
+          last_verification_reset: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        const { data: inserted, error: insertErr } = await supabase
+          .from('subscriptions')
+          .insert(newRecord)
+          .select('*')
+          .single();
+        if (insertErr) throw insertErr;
+        return {
+          userId: inserted.user_id,
+          sessionId: inserted.session_id,
+          email: inserted.email,
+          paymentId: inserted.payment_id,
+          orderId: inserted.order_id,
+          isPro: inserted.is_pro,
+          freeVerifications: inserted.free_verifications || 0,
+          lastVerificationReset: inserted.last_verification_reset,
+          createdAt: inserted.created_at,
+          updatedAt: inserted.updated_at
         };
       }
     } catch (dbErr) {
@@ -345,6 +389,9 @@ async function incrementVerificationUsage({ userId, sessionId }) {
 
   if (sub) {
     sub.freeVerifications = (sub.freeVerifications || 0) + 1;
+    if (!sub.lastVerificationReset) {
+      sub.lastVerificationReset = new Date().toISOString();
+    }
     sub.updatedAt = new Date().toISOString();
   } else {
     sub = {
@@ -355,6 +402,112 @@ async function incrementVerificationUsage({ userId, sessionId }) {
       orderId: null,
       isPro: false,
       freeVerifications: 1,
+      lastVerificationReset: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    subs.push(sub);
+  }
+  writeLocalSubscriptions(subs);
+  return sub;
+}
+
+async function resetVerificationUsage({ userId, sessionId, resetTime }) {
+  if (supabase && isSupabaseAvailable) {
+    try {
+      let data = null;
+      if (userId) {
+        const { data: byUser } = await supabase.from('subscriptions').select('*').eq('user_id', userId).maybeSingle();
+        data = byUser;
+      }
+      if (!data && sessionId) {
+        const { data: bySession } = await supabase.from('subscriptions').select('*').eq('session_id', sessionId).maybeSingle();
+        data = bySession;
+      }
+
+      if (data) {
+        const { data: updated, error } = await supabase
+          .from('subscriptions')
+          .update({
+            free_verifications: 0,
+            last_verification_reset: resetTime,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', data.id)
+          .select('*')
+          .single();
+        if (error) throw error;
+        return {
+          userId: updated.user_id,
+          sessionId: updated.session_id,
+          email: updated.email,
+          paymentId: updated.payment_id,
+          orderId: updated.order_id,
+          isPro: updated.is_pro,
+          freeVerifications: updated.free_verifications || 0,
+          lastVerificationReset: updated.last_verification_reset,
+          createdAt: updated.created_at,
+          updatedAt: updated.updated_at
+        };
+      } else {
+        const newRecord = {
+          user_id: userId || null,
+          session_id: sessionId || null,
+          is_pro: false,
+          free_verifications: 0,
+          last_verification_reset: resetTime,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        const { data: inserted, error: insertErr } = await supabase
+          .from('subscriptions')
+          .insert(newRecord)
+          .select('*')
+          .single();
+        if (insertErr) throw insertErr;
+        return {
+          userId: inserted.user_id,
+          sessionId: inserted.session_id,
+          email: inserted.email,
+          paymentId: inserted.payment_id,
+          orderId: inserted.order_id,
+          isPro: inserted.is_pro,
+          freeVerifications: inserted.free_verifications || 0,
+          lastVerificationReset: inserted.last_verification_reset,
+          createdAt: inserted.created_at,
+          updatedAt: inserted.updated_at
+        };
+      }
+    } catch (dbErr) {
+      console.warn('Supabase error, disabling Supabase and falling back to JSON:', dbErr.message);
+      isSupabaseAvailable = false;
+    }
+  }
+
+  // JSON Fallback
+  const subs = readLocalSubscriptions();
+  let sub = null;
+  if (userId) {
+    sub = subs.find(s => s.userId === userId);
+  }
+  if (!sub && sessionId) {
+    sub = subs.find(s => s.sessionId === sessionId);
+  }
+
+  if (sub) {
+    sub.freeVerifications = 0;
+    sub.lastVerificationReset = resetTime;
+    sub.updatedAt = new Date().toISOString();
+  } else {
+    sub = {
+      userId: userId || null,
+      sessionId: sessionId || null,
+      email: null,
+      paymentId: null,
+      orderId: null,
+      isPro: false,
+      freeVerifications: 0,
+      lastVerificationReset: resetTime,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -367,5 +520,6 @@ async function incrementVerificationUsage({ userId, sessionId }) {
 module.exports = {
   getOrCreateSubscription,
   activatePro,
-  incrementVerificationUsage
+  incrementVerificationUsage,
+  resetVerificationUsage
 };

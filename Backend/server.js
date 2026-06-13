@@ -30,33 +30,62 @@ app.use(cors());
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
+const checkAndResetVerificationLimit = async (status, { userId, sessionId }) => {
+  const lastReset = status.lastVerificationReset ? new Date(status.lastVerificationReset) : new Date(status.createdAt);
+  const now = new Date();
+  const msPassed = now - lastReset;
+  const hoursPassed = msPassed / (1000 * 60 * 60);
+
+  if (hoursPassed >= 24) {
+    console.log(`24 hours passed since last reset for user/session ${userId || sessionId}. Resetting count.`);
+    const updatedStatus = await db.resetVerificationUsage({
+      userId,
+      sessionId,
+      resetTime: now.toISOString()
+    });
+    return updatedStatus;
+  }
+  return status;
+};
+
 // DB-backed Pro and Free Tier limits middleware
 const checkProAccessLimit = async (req, res, next) => {
-  const { userId, sessionId, email } = req.body;
+  let { userId, sessionId, email } = req.body;
   if (!sessionId) {
     return res.status(400).json({ error: 'Session ID is required.' });
   }
 
+  const normalizedUserId = (userId && typeof userId === 'string' && userId.trim() !== '') ? userId : null;
+
   try {
-    const status = await db.getOrCreateSubscription({ userId, sessionId, email });
+    let status = await db.getOrCreateSubscription({ userId: normalizedUserId, sessionId, email });
+    
+    // Check and reset 24h limit
+    status = await checkAndResetVerificationLimit(status, { userId: normalizedUserId, sessionId });
+
     if (status.isPro) {
       req.isPro = true;
+      req.freeVerifications = 0;
       return next();
     }
 
     if (status.freeVerifications >= 3) {
       return res.status(403).json({
         error: 'Free tier limit reached',
-        message: 'You have used all 3 free trial verifications. Upgrade to Pro for unlimited access.'
+        message: 'You have used all 3 free trial verifications. Upgrade to Pro for unlimited access.',
+        isPro: false,
+        freeVerifications: status.freeVerifications
       });
     }
 
     req.isPro = false;
+    req.freeVerifications = status.freeVerifications;
     return next();
   } catch (err) {
     console.error('Pro check limit error:', err.message);
     // Proceed as guest in case of database errors
     req.isPro = false;
+    req.freeVerifications = 0;
     return next();
   }
 };
@@ -153,8 +182,14 @@ app.get('/api/check-pro-status', async (req, res) => {
     return res.status(400).json({ error: 'Either User ID or Session ID is required.' });
   }
 
+  const normalizedUserId = (userId && typeof userId === 'string' && userId.trim() !== '') ? userId : null;
+
   try {
-    const status = await db.getOrCreateSubscription({ userId, sessionId });
+    let status = await db.getOrCreateSubscription({ userId: normalizedUserId, sessionId });
+    
+    // Check and reset 24h limit
+    status = await checkAndResetVerificationLimit(status, { userId: normalizedUserId, sessionId });
+
     res.json({ success: true, isPro: status.isPro, freeVerifications: status.freeVerifications });
   } catch (err) {
     console.error('Check status error:', err.message);
@@ -251,15 +286,23 @@ ${text}`
     }
 
     // Increment free verifications usage if not Pro
+    let updatedVerifications = req.freeVerifications;
     if (!req.isPro) {
       try {
-        await db.incrementVerificationUsage({ userId, sessionId: req.body.sessionId });
+        const normalizedUserId = (req.body.userId && typeof req.body.userId === 'string' && req.body.userId.trim() !== '') ? req.body.userId : null;
+        const updatedSub = await db.incrementVerificationUsage({ userId: normalizedUserId, sessionId: req.body.sessionId });
+        updatedVerifications = updatedSub.freeVerifications;
       } catch (err) {
         console.error('Failed to increment usage count:', err.message);
       }
     }
 
-    res.json({ success: true, result });
+    res.json({
+      success: true,
+      result,
+      isPro: req.isPro,
+      freeVerifications: updatedVerifications
+    });
 
   } catch (error) {
     console.error('Verification error:', error.message);

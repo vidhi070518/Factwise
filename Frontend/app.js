@@ -168,7 +168,8 @@ function updateVerificationUsageUI() {
     if (isPro) {
       limitText.textContent = 'Pro subscription active (Unlimited scans)';
     } else {
-      limitText.textContent = `${count} / 3 free trial verifications used`;
+      const remaining = Math.max(0, 3 - count);
+      limitText.textContent = `${remaining} / 3 free scans remaining today`;
     }
   }
 
@@ -232,16 +233,18 @@ async function verifyText() {
     const data = await response.json();
 
     if (!response.ok) {
+      if (data.freeVerifications !== undefined) {
+        freeVerificationsCount = data.freeVerifications;
+        updateVerificationUsageUI();
+      }
       showError(data.error || 'Something went wrong. Please try again.');
       return;
     }
 
     if (data.success && data.result) {
-      if (!checkIsPro()) {
-        incrementVerificationCount();
-      } else {
-        refreshProStatus();
-      }
+      if (data.isPro !== undefined) isProStatus = data.isPro;
+      if (data.freeVerifications !== undefined) freeVerificationsCount = data.freeVerifications;
+      updateVerificationUsageUI();
       renderResults(data.result);
     } else {
       showError('Could not process the result. Please try again.');
