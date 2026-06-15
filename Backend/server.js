@@ -14,10 +14,9 @@ dotenv.config();
 const app = express();
 app.set('trust proxy', 1);
 const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY)
+  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+  : null;
 
 // Initialize Razorpay SDK
 const razorpay = new Razorpay({
@@ -78,15 +77,19 @@ const checkProAccessLimit = async (req, res, next) => {
     // Check and reset 24h limit
     status = await checkAndResetVerificationLimit(status, { userId: normalizedUserId, sessionId });
 
+    console.log(`[Limit Check] sessionId: ${sessionId}, userId: ${userId}, isPro: ${status.isPro}, freeVerifications: ${status.freeVerifications}`);
+
     if (status.isPro) {
       req.isPro = true;
       req.freeVerifications = 0;
+      console.log(`[Limit Check] Pro user bypassed limit.`);
       return next();
     }
 
     if (status.freeVerifications >= 5) {
       activeScans.delete(scanKey);
       req.scanKey = null;
+      console.log(`[Limit Check] Middleware BLOCKED request for sessionId: ${sessionId}. Count >= 5.`);
       return res.status(403).json({
         error: 'Free tier limit reached',
         message: 'You have used all 5 free daily verifications. Upgrade to Pro for unlimited access.',
@@ -97,6 +100,7 @@ const checkProAccessLimit = async (req, res, next) => {
 
     req.isPro = false;
     req.freeVerifications = status.freeVerifications;
+    console.log(`[Limit Check] Middleware ALLOWED request. Session: ${sessionId}, Count: ${status.freeVerifications}/5`);
     return next();
   } catch (err) {
     console.error('Pro check limit error:', err.message);
@@ -338,7 +342,7 @@ ${text}`
     result = ensureLogicalConsistency(result);
 
     // ─── Save to Supabase if user is logged in ────────────────────────────────
-    if (userId) {
+    if (userId && supabase) {
       try {
         await supabase.from('verifications').insert({
           user_id: userId,
@@ -359,8 +363,10 @@ ${text}`
     if (!req.isPro) {
       try {
         const normalizedUserId = (req.body.userId && typeof req.body.userId === 'string' && req.body.userId.trim() !== '') ? req.body.userId : null;
+        console.log(`[Usage Increment] Initiating increment for sessionId: ${req.body.sessionId}`);
         const updatedSub = await db.incrementVerificationUsage({ userId: normalizedUserId, sessionId: req.body.sessionId });
         updatedVerifications = updatedSub.freeVerifications;
+        console.log(`[Usage Increment] Increment function EXECUTED. New count: ${updatedVerifications}`);
       } catch (err) {
         console.error('Failed to increment usage count:', err.message);
       }

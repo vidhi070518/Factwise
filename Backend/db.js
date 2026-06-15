@@ -40,21 +40,22 @@ function writeLocalSubscriptions(subs) {
 
 // Supabase client instance
 let supabase = null;
-let isSupabaseAvailable = true;
+const useSupabase = !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY);
 
-if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
+if (useSupabase) {
   try {
     supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+    console.log('Database Client: Supabase module initialized');
   } catch (e) {
-    console.warn('Supabase initialization failed, relying on JSON storage fallback:', e.message);
-    isSupabaseAvailable = false;
+    console.error('Supabase client creation failed:', e.message);
+    throw e;
   }
 } else {
-  isSupabaseAvailable = false;
+  console.log('Database Client: Supabase not configured. Using JSON file fallback.');
 }
 
 async function getOrCreateSubscription({ userId, sessionId, email }) {
-  if (supabase && isSupabaseAvailable) {
+  if (useSupabase) {
     try {
       let data = null;
       let error = null;
@@ -84,7 +85,8 @@ async function getOrCreateSubscription({ userId, sessionId, email }) {
             .eq('id', data.id)
             .select('*')
             .single();
-          if (!linkErr) data = updated;
+          if (linkErr) throw linkErr;
+          data = updated;
         }
       }
 
@@ -139,8 +141,8 @@ async function getOrCreateSubscription({ userId, sessionId, email }) {
       };
 
     } catch (dbErr) {
-      console.warn('Supabase error, disabling Supabase and falling back to JSON:', dbErr.message);
-      isSupabaseAvailable = false;
+      console.error('Supabase query error in getOrCreateSubscription:', dbErr.message);
+      throw dbErr; // Let the caller (server.js) catch and fail securely with 500
     }
   }
 
@@ -187,7 +189,7 @@ async function getOrCreateSubscription({ userId, sessionId, email }) {
 }
 
 async function activatePro({ userId, sessionId, email, orderId, paymentId }) {
-  if (supabase && isSupabaseAvailable) {
+  if (useSupabase) {
     try {
       let data = null;
       if (userId) {
@@ -261,8 +263,8 @@ async function activatePro({ userId, sessionId, email, orderId, paymentId }) {
         };
       }
     } catch (dbErr) {
-      console.warn('Supabase error, disabling Supabase and falling back to JSON:', dbErr.message);
-      isSupabaseAvailable = false;
+      console.error('Supabase query error in activatePro:', dbErr.message);
+      throw dbErr;
     }
   }
 
@@ -306,7 +308,7 @@ async function activatePro({ userId, sessionId, email, orderId, paymentId }) {
 }
 
 async function incrementVerificationUsage({ userId, sessionId }) {
-  if (supabase && isSupabaseAvailable) {
+  if (useSupabase) {
     try {
       let data = null;
       if (userId) {
@@ -372,8 +374,8 @@ async function incrementVerificationUsage({ userId, sessionId }) {
         };
       }
     } catch (dbErr) {
-      console.warn('Supabase error, disabling Supabase and falling back to JSON:', dbErr.message);
-      isSupabaseAvailable = false;
+      console.error('Supabase query error in incrementVerificationUsage:', dbErr.message);
+      throw dbErr;
     }
   }
 
@@ -413,7 +415,7 @@ async function incrementVerificationUsage({ userId, sessionId }) {
 }
 
 async function resetVerificationUsage({ userId, sessionId, resetTime }) {
-  if (supabase && isSupabaseAvailable) {
+  if (useSupabase) {
     try {
       let data = null;
       if (userId) {
@@ -479,8 +481,8 @@ async function resetVerificationUsage({ userId, sessionId, resetTime }) {
         };
       }
     } catch (dbErr) {
-      console.warn('Supabase error, disabling Supabase and falling back to JSON:', dbErr.message);
-      isSupabaseAvailable = false;
+      console.error('Supabase query error in resetVerificationUsage:', dbErr.message);
+      throw dbErr;
     }
   }
 
