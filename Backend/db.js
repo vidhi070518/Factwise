@@ -32,7 +32,9 @@ function readLocalSubscriptions() {
 function writeLocalSubscriptions(subs) {
   ensureDataDir();
   try {
+    console.log(`[JSON Database Write] 11. Writing updated subscriptions array (size=${subs.length}) to JSON file.`);
     fs.writeFileSync(JSON_FILE_PATH, JSON.stringify(subs, null, 2), 'utf8');
+    console.log(`[JSON Database Write] 11. Successfully wrote to local JSON file.`);
   } catch (err) {
     console.error('Error writing subscriptions JSON:', err.message);
   }
@@ -119,13 +121,18 @@ async function getOrCreateSubscription({ userId, sessionId, email }) {
         updated_at: new Date().toISOString()
       };
 
+      console.log(`[Supabase Database Write] 11. Inserting new subscription record in Supabase: session_id=${sessionId}, user_id=${userId}`);
       const { data: inserted, error: insertErr } = await supabase
         .from('subscriptions')
         .insert(newRecord)
         .select('*')
         .single();
 
-      if (insertErr) throw insertErr;
+      if (insertErr) {
+        console.error('[Supabase Database Write] Failed inserting new subscription record in Supabase:', insertErr.message);
+        throw insertErr;
+      }
+      console.log(`[Supabase Database Write] 11. Successfully inserted subscription record.`);
 
       return {
         userId: inserted.user_id,
@@ -322,6 +329,7 @@ async function incrementVerificationUsage({ userId, sessionId }) {
 
       if (data) {
         const currentCount = data.free_verifications || 0;
+        console.log(`[Supabase Database Write] 11. Updating free_verifications count from ${currentCount} to ${currentCount + 1} in Supabase for row ID: ${data.id}`);
         const { data: updated, error } = await supabase
           .from('subscriptions')
           .update({
@@ -331,7 +339,11 @@ async function incrementVerificationUsage({ userId, sessionId }) {
           .eq('id', data.id)
           .select('*')
           .single();
-        if (error) throw error;
+        if (error) {
+          console.error('[Supabase Database Write] Failed updating free_verifications count in Supabase:', error.message);
+          throw error;
+        }
+        console.log(`[Supabase Database Write] 11. Successfully updated count in Supabase.`);
         return {
           userId: updated.user_id,
           sessionId: updated.session_id,
@@ -354,12 +366,17 @@ async function incrementVerificationUsage({ userId, sessionId }) {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
+        console.log(`[Supabase Database Write] 11. Inserting new subscription record with count=1 in Supabase: session_id=${sessionId}`);
         const { data: inserted, error: insertErr } = await supabase
           .from('subscriptions')
           .insert(newRecord)
           .select('*')
           .single();
-        if (insertErr) throw insertErr;
+        if (insertErr) {
+          console.error('[Supabase Database Write] Failed inserting new subscription record with count=1 in Supabase:', insertErr.message);
+          throw insertErr;
+        }
+        console.log(`[Supabase Database Write] 11. Successfully inserted record in Supabase.`);
         return {
           userId: inserted.user_id,
           sessionId: inserted.session_id,
@@ -428,6 +445,7 @@ async function resetVerificationUsage({ userId, sessionId, resetTime }) {
       }
 
       if (data) {
+        console.log(`[Supabase Database Write] 11. Resetting free_verifications count to 0 in Supabase for row ID: ${data.id}`);
         const { data: updated, error } = await supabase
           .from('subscriptions')
           .update({
@@ -438,7 +456,11 @@ async function resetVerificationUsage({ userId, sessionId, resetTime }) {
           .eq('id', data.id)
           .select('*')
           .single();
-        if (error) throw error;
+        if (error) {
+          console.error('[Supabase Database Write] Failed resetting free_verifications count to 0 in Supabase:', error.message);
+          throw error;
+        }
+        console.log(`[Supabase Database Write] 11. Successfully reset count to 0 in Supabase.`);
         return {
           userId: updated.user_id,
           sessionId: updated.session_id,
@@ -461,12 +483,17 @@ async function resetVerificationUsage({ userId, sessionId, resetTime }) {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
+        console.log(`[Supabase Database Write] 11. Inserting new subscription record with count=0 in Supabase: session_id=${sessionId}`);
         const { data: inserted, error: insertErr } = await supabase
           .from('subscriptions')
           .insert(newRecord)
           .select('*')
           .single();
-        if (insertErr) throw insertErr;
+        if (insertErr) {
+          console.error('[Supabase Database Write] Failed inserting new subscription record with count=0 in Supabase:', insertErr.message);
+          throw insertErr;
+        }
+        console.log(`[Supabase Database Write] 11. Successfully inserted record with count=0 in Supabase.`);
         return {
           userId: inserted.user_id,
           sessionId: inserted.session_id,

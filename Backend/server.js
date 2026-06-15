@@ -52,8 +52,14 @@ const checkAndResetVerificationLimit = async (status, { userId, sessionId }) => 
 
 // DB-backed Pro and Free Tier limits middleware
 const checkProAccessLimit = async (req, res, next) => {
+  console.log(`[Limit Flow] 1. Incoming request received at /api/verify`);
+  console.log(`[Limit Flow] 2. Middleware checkProAccessLimit is executing`);
+
   let { userId, sessionId, email } = req.body;
+  console.log(`[Limit Flow] 3. Request parameters parsed: userId=${userId}, sessionId=${sessionId}, email=${email}`);
+
   if (!sessionId) {
+    console.log(`[Limit Flow] Validation error: Session ID is missing in request.`);
     return res.status(400).json({ error: 'Session ID is required.' });
   }
 
@@ -61,6 +67,7 @@ const checkProAccessLimit = async (req, res, next) => {
   const scanKey = normalizedUserId || sessionId;
 
   if (activeScans.has(scanKey)) {
+    console.log(`[Limit Flow] Request blocked: verification scan already in progress for key '${scanKey}'.`);
     return res.status(429).json({
       error: 'Verification in progress',
       message: 'A verification request is already in progress for this session. Please wait.'
@@ -72,24 +79,27 @@ const checkProAccessLimit = async (req, res, next) => {
   req.scanKey = scanKey;
 
   try {
+    console.log(`[Limit Flow] 4. Fetching subscription status from database for key: '${scanKey}'`);
     let status = await db.getOrCreateSubscription({ userId: normalizedUserId, sessionId, email });
+    console.log(`[Limit Flow] 5. Subscription loaded: isPro=${status.isPro}, freeVerifications count=${status.freeVerifications}`);
     
     // Check and reset 24h limit
     status = await checkAndResetVerificationLimit(status, { userId: normalizedUserId, sessionId });
 
-    console.log(`[Limit Check] sessionId: ${sessionId}, userId: ${userId}, isPro: ${status.isPro}, freeVerifications: ${status.freeVerifications}`);
-
     if (status.isPro) {
       req.isPro = true;
       req.freeVerifications = 0;
-      console.log(`[Limit Check] Pro user bypassed limit.`);
+      console.log(`[Limit Flow] 8. Request ALLOWED: User is Pro (limit bypassed).`);
       return next();
     }
 
-    if (status.freeVerifications >= 5) {
+    const blockCondition = (status.freeVerifications >= 5);
+    console.log(`[Limit Flow] 6. Limit block condition check: (freeVerifications >= 5) => ${blockCondition}`);
+
+    if (blockCondition) {
       activeScans.delete(scanKey);
       req.scanKey = null;
-      console.log(`[Limit Check] Middleware BLOCKED request for sessionId: ${sessionId}. Count >= 5.`);
+      console.log(`[Limit Flow] 7. Middleware BLOCKED request: Session '${sessionId}' has reached the limit (count=${status.freeVerifications}).`);
       return res.status(403).json({
         error: 'Free tier limit reached',
         message: 'You have used all 5 free daily verifications. Upgrade to Pro for unlimited access.',
@@ -100,10 +110,10 @@ const checkProAccessLimit = async (req, res, next) => {
 
     req.isPro = false;
     req.freeVerifications = status.freeVerifications;
-    console.log(`[Limit Check] Middleware ALLOWED request. Session: ${sessionId}, Count: ${status.freeVerifications}/5`);
+    console.log(`[Limit Flow] 8. Request ALLOWED: Free user below limit. Remaining scans: ${5 - status.freeVerifications}/5`);
     return next();
   } catch (err) {
-    console.error('Pro check limit error:', err.message);
+    console.error(`[Limit Flow] Database check failed: ${err.message}`);
     activeScans.delete(scanKey);
     req.scanKey = null;
     return res.status(500).json({
@@ -363,12 +373,13 @@ ${text}`
     if (!req.isPro) {
       try {
         const normalizedUserId = (req.body.userId && typeof req.body.userId === 'string' && req.body.userId.trim() !== '') ? req.body.userId : null;
-        console.log(`[Usage Increment] Initiating increment for sessionId: ${req.body.sessionId}`);
+        console.log(`[Limit Flow] 9. Executing incrementVerificationUsage() for sessionId: ${req.body.sessionId}`);
         const updatedSub = await db.incrementVerificationUsage({ userId: normalizedUserId, sessionId: req.body.sessionId });
         updatedVerifications = updatedSub.freeVerifications;
-        console.log(`[Usage Increment] Increment function EXECUTED. New count: ${updatedVerifications}`);
+        console.log(`[Limit Flow] 10. Increment executed. Updated verification count in database: ${updatedVerifications}`);
       } catch (err) {
-        console.error('Failed to increment usage count:', err.message);
+        console.error('[Limit Flow] Failed to increment usage count:', err.message);
+        throw err;
       }
     }
 

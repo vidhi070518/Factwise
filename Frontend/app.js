@@ -23,6 +23,9 @@ function getOrCreateSessionId() {
   if (!sid) {
     sid = 'session_' + Math.random().toString(36).substring(2, 15) + '_' + Math.random().toString(36).substring(2, 15);
     localStorage.setItem('factwise_session_id', sid);
+    console.log(`[Session ID] Generated new sessionId: ${sid}`);
+  } else {
+    console.log(`[Session ID] Retrieved existing sessionId: ${sid}`);
   }
   return sid;
 }
@@ -226,19 +229,23 @@ async function verifyText() {
   hideError();
   hideResults();
 
+  const payload = {
+    text,
+    userId: currentUser?.id || null,
+    sessionId: getOrCreateSessionId(),
+    email: currentUser?.email || null
+  };
+  console.log(`[Outgoing Verify Request] Payload:`, JSON.stringify(payload, null, 2));
+
   try {
     const response = await fetch(`${BACKEND_URL}/api/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text,
-        userId: currentUser?.id || null,
-        sessionId: getOrCreateSessionId(),
-        email: currentUser?.email || null
-      }),
+      body: JSON.stringify(payload),
     });
 
     const data = await response.json();
+    console.log(`[Incoming Verify Response] Status: ${response.status}, Payload:`, JSON.stringify(data, null, 2));
 
     if (!response.ok) {
       if (data.freeVerifications !== undefined) {
