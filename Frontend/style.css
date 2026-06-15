@@ -350,12 +350,24 @@ body {
 }
 
 /* Verdict states */
+.verdict-verified .verdict-icon,
 .verdict-trusted .verdict-icon { background: var(--verified-bg); }
+.verdict-verified .verdict-value,
 .verdict-trusted .verdict-value { color: var(--verified); }
+
+.verdict-conflicting .verdict-icon { background: var(--conflicting-bg); }
+.verdict-conflicting .verdict-value { color: var(--conflicting); }
+
+.verdict-potentially_inaccurate .verdict-icon,
+.verdict-unreliable .verdict-icon { background: var(--incorrect-bg); }
+.verdict-potentially_inaccurate .verdict-value,
+.verdict-unreliable .verdict-value { color: var(--incorrect); }
+
 .verdict-questionable .verdict-icon { background: var(--questionable-bg); }
 .verdict-questionable .verdict-value { color: var(--questionable); }
-.verdict-unreliable .verdict-icon { background: var(--incorrect-bg); }
-.verdict-unreliable .verdict-value { color: var(--incorrect); }
+
+.verdict-requires_human_verification .verdict-icon { background: var(--verification-bg); }
+.verdict-requires_human_verification .verdict-value { color: var(--verification); }
 
 /* Claims */
 .claims-section {
@@ -855,9 +867,17 @@ body {
   text-transform: capitalize;
 }
 
+.verdict-verified,
 .verdict-trusted { color: var(--verified); }
-.verdict-questionable { color: var(--questionable); }
+
+.verdict-conflicting { color: var(--conflicting); }
+
+.verdict-potentially_inaccurate,
 .verdict-unreliable { color: var(--incorrect); }
+
+.verdict-questionable { color: var(--questionable); }
+
+.verdict-requires_human_verification { color: var(--verification); }
 
 .history-date {
   font-size: 12px;

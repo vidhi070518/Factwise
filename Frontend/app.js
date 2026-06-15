@@ -168,8 +168,8 @@ function updateVerificationUsageUI() {
     if (isPro) {
       limitText.textContent = 'Pro subscription active (Unlimited scans)';
     } else {
-      const remaining = Math.max(0, 3 - count);
-      limitText.textContent = `${remaining} / 3 free scans remaining today`;
+      const remaining = Math.max(0, 5 - count);
+      limitText.textContent = `${remaining} / 5 free scans remaining today`;
     }
   }
 
@@ -178,7 +178,7 @@ function updateVerificationUsageUI() {
   const demoSection = document.getElementById('demoSection');
   const verifyBtn = document.getElementById('verifyBtn');
 
-  if (!isPro && count >= 3) {
+  if (!isPro && count >= 5) {
     // Lock inputs & show paywall banner
     if (inputText) inputText.disabled = true;
     if (verifyBtn) verifyBtn.disabled = true;
@@ -209,8 +209,8 @@ async function verifyText() {
     return;
   }
 
-  if (!checkIsPro() && getVerificationCount() >= 3) {
-    showError('Verification blocked. You have used all 3 free trial verifications.');
+  if (!checkIsPro() && getVerificationCount() >= 5) {
+    showError('Verification blocked. You have used all 5 free daily verifications today.');
     return;
   }
 
@@ -296,11 +296,27 @@ function renderResults(result) {
   const verdictCard = document.getElementById('verdictCard');
   verdictCard.className = `verdict-card verdict-${overall}`;
 
-  const icons = { trusted: '✅', questionable: '⚠️', unreliable: '❌' };
-  const labels = { trusted: 'Trusted Rating', questionable: 'Questionable Rating', unreliable: 'Unreliable Rating' };
+  const icons = {
+    verified: '✅',
+    trusted: '✅',
+    conflicting: '💜',
+    potentially_inaccurate: '❌',
+    unreliable: '❌',
+    questionable: '⚠️',
+    requires_human_verification: '🔍'
+  };
+  const labels = {
+    verified: 'Verified Rating',
+    trusted: 'Verified Rating',
+    conflicting: 'Conflicting Rating',
+    potentially_inaccurate: 'Potentially Inaccurate',
+    unreliable: 'Potentially Inaccurate',
+    questionable: 'Questionable Rating',
+    requires_human_verification: 'Requires Human Verification'
+  };
 
   document.getElementById('verdictIcon').textContent = icons[overall] || '🔍';
-  document.getElementById('verdictValue').textContent = labels[overall] || overall;
+  document.getElementById('verdictValue').textContent = labels[overall] || (overall ? overall.replace(/_/g, ' ') : '');
   document.getElementById('verdictSummary').textContent = summary;
 
   // Build the text highlight panel
@@ -383,12 +399,21 @@ async function loadHistory() {
       const date = new Date(item.created_at).toLocaleDateString('en-IN', {
         day: 'numeric', month: 'short', year: 'numeric'
       });
-      const icons = { trusted: '✅', questionable: '⚠️', unreliable: '❌' };
+      const icons = {
+        verified: '✅',
+        trusted: '✅',
+        conflicting: '💜',
+        potentially_inaccurate: '❌',
+        unreliable: '❌',
+        questionable: '⚠️',
+        requires_human_verification: '🔍'
+      };
+      const labelText = item.overall ? item.overall.replace(/_/g, ' ') : '';
       const card = document.createElement('div');
       card.className = 'history-card';
       card.innerHTML = `
         <div class="history-top">
-          <span class="history-verdict verdict-${item.overall}">${icons[item.overall]} ${item.overall}</span>
+          <span class="history-verdict verdict-${item.overall}">${icons[item.overall] || '🔍'} ${labelText}</span>
           <span class="history-date">${date}</span>
         </div>
         <p class="history-text">${escapeHTML(item.input_text.substring(0, 120))}...</p>
