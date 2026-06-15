@@ -2,6 +2,7 @@ const BACKEND_URL = window.location.hostname === 'localhost' || window.location.
   ? 'http://localhost:5000'
   : 'https://factwise-backend.onrender.com';
 
+
 const SUPABASE_URL = 'https://dnxzkzpolkmwlhaqnfyy.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRueHprenBvbGttd2xoYXFuZnl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NzU5MjIsImV4cCI6MjA5MzQ1MTkyMn0._2w-r8v0cLjxeHeYA71PQmg4sMulmlk6EMJymUNNF2c';
 
@@ -152,6 +153,7 @@ function incrementVerificationCount() {
 function updateVerificationUsageUI() {
   const isPro = checkIsPro();
   const count = getVerificationCount();
+  const remaining = Math.max(0, 5 - count);
   
   // Re-sync navbar elements in case Pro status changed dynamically
   const navLinks = document.querySelector('.nav-links');
@@ -168,7 +170,6 @@ function updateVerificationUsageUI() {
     if (isPro) {
       limitText.textContent = 'Pro subscription active (Unlimited scans)';
     } else {
-      const remaining = Math.max(0, 5 - count);
       limitText.textContent = `${remaining} / 5 free scans remaining today`;
     }
   }
@@ -178,13 +179,14 @@ function updateVerificationUsageUI() {
   const demoSection = document.getElementById('demoSection');
   const verifyBtn = document.getElementById('verifyBtn');
 
-  if (!isPro && count >= 5) {
+  if (!isPro && remaining <= 0) {
     // Lock inputs & show paywall banner
     if (inputText) inputText.disabled = true;
     if (verifyBtn) verifyBtn.disabled = true;
     if (checkerBox) checkerBox.style.opacity = '0.4';
     if (paywallContainer) paywallContainer.classList.remove('hidden');
     if (demoSection) demoSection.classList.add('hidden');
+    showError('Free tier limit reached');
   } else {
     // Unlock
     if (inputText) inputText.disabled = false;
@@ -192,6 +194,12 @@ function updateVerificationUsageUI() {
     if (checkerBox) checkerBox.style.opacity = '1.0';
     if (paywallContainer) paywallContainer.classList.add('hidden');
     if (demoSection) demoSection.classList.remove('hidden');
+    
+    // Hide error box if it's currently displaying the limit reached error
+    const errorTextEl = document.getElementById('errorText');
+    if (errorTextEl && errorTextEl.textContent === 'Free tier limit reached') {
+      hideError();
+    }
   }
 }
 
@@ -210,7 +218,7 @@ async function verifyText() {
   }
 
   if (!checkIsPro() && getVerificationCount() >= 5) {
-    showError('Verification blocked. You have used all 5 free daily verifications today.');
+    showError('Free tier limit reached');
     return;
   }
 
