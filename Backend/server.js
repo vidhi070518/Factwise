@@ -157,7 +157,7 @@ const verifyValidation = [
     .escape(),
 ];
 
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
   res.json({
     status: 'Factwise backend is running',
     useSupabase: !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY),
