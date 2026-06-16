@@ -1,6 +1,10 @@
 {
   "name": "factwise-root",
   "version": "1.0.0",
+  "scripts": {
+    "build": "echo 'No build step required'",
+    "start": "node Backend/server.js"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.1",
     "cors": "^2.8.6",
