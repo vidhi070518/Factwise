@@ -1,4 +1,4 @@
-const BACKEND_URL = 'https://factwise-backend.onrender.com';
+const BACKEND_URL = 'https://factwise-brown.vercel.app';
 
 
 const SUPABASE_URL = 'https://dnxzkzpolkmwlhaqnfyy.supabase.co';
