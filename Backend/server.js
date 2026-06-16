@@ -158,7 +158,13 @@ const verifyValidation = [
 ];
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'Factwise backend is running' });
+  res.json({
+    status: 'Factwise backend is running',
+    useSupabase: !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY),
+    supabaseURL: process.env.SUPABASE_URL ? 'Configured' : 'Missing',
+    supabaseKey: process.env.SUPABASE_SERVICE_KEY ? 'Configured' : 'Missing',
+    port: process.env.PORT || 5000
+  });
 });
 
 // ─── Razorpay Endpoints ───────────────────────────────────────────────────────
