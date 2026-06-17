@@ -20,8 +20,8 @@ const supabase = (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY)
 
 // Initialize Razorpay SDK
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || '',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || '',
+  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_placeholder',
+  key_secret: process.env.RAZORPAY_KEY_SECRET || 'placeholder_secret',
 });
 
 // Cache to prevent concurrent verification scans from same session/user
