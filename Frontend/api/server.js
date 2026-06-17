@@ -167,6 +167,10 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.get('/api/ping', (req, res) => {
+  res.json({ ping: 'pong', time: new Date().toISOString() });
+});
+
 // ─── Razorpay Endpoints ───────────────────────────────────────────────────────
 app.get('/api/razorpay-key', (req, res) => {
   res.json({ keyId: process.env.RAZORPAY_KEY_ID || '' });

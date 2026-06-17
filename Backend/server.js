@@ -13,7 +13,7 @@ dotenv.config();
 
 const app = express();
 app.set('trust proxy', 1);
-const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const client = new Groq({ apiKey: process.env.GROQ_API_KEY || 'gsk_placeholder_key_to_prevent_startup_crash' });
 const supabase = (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY)
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
   : null;
@@ -165,6 +165,10 @@ app.get('/api/health', (req, res) => {
     supabaseKey: process.env.SUPABASE_SERVICE_KEY ? 'Configured' : 'Missing',
     port: process.env.PORT || 5000
   });
+});
+
+app.get('/api/ping', (req, res) => {
+  res.json({ ping: 'pong', time: new Date().toISOString() });
 });
 
 // ─── Razorpay Endpoints ───────────────────────────────────────────────────────
