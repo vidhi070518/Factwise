@@ -163,6 +163,8 @@ app.get('/api/health', (req, res) => {
     useSupabase: !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY),
     supabaseURL: process.env.SUPABASE_URL ? 'Configured' : 'Missing',
     supabaseKey: process.env.SUPABASE_SERVICE_KEY ? 'Configured' : 'Missing',
+    useGroq: !!process.env.GROQ_API_KEY,
+    groqKey: process.env.GROQ_API_KEY ? 'Configured' : 'Missing',
     port: process.env.PORT || 5000
   });
 });
