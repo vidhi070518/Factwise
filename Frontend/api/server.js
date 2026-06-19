@@ -205,6 +205,7 @@ Rules for Claim Extraction & Lore:
      - 'potentially_inaccurate': claim likely contradicts facts or contains errors.
      - 'conflicting_info': credible sources show conflicting reports.
      - 'requires_human_verification': claim is subjective, ambiguous, or requires human review.
+- Strict Factual & Numeric Accuracy: Double-check all numbers, counts, calculations, dates, and names. If a claim asserts a specific count/metric (e.g. "2 hearts") and the facts contradict this (e.g. octopuses actually have 3 hearts), you MUST mark the claim status as 'potentially_inaccurate' (or 'conflicting_info' if reports differ) and explain the correct count in your explanation. Never mark a claim as 'verified' if your explanation contains contradicting evidence or counts.
 - Distinguish properly between factual claims, opinions, fictional content, and incomplete context.
 - If the text contains claims referring to fictional universes, lore, or canon (e.g. comic books, movies, novels, gaming lore), verify them within the context of that fiction/canon. For example, "Doctor Strange was a surgeon before becoming Sorcerer Supreme" is verified within Marvel canon and MUST be marked as "verified", not inaccurate or unsupported.
 - Only return the JSON, nothing else.
