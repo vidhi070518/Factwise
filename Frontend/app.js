@@ -544,6 +544,7 @@ async function handleSignup() {
     btn.textContent = 'Create account';
   } else {
     const user = data?.user;
+    const session = data?.session;
     if (user) {
       try {
         await supabase.from('profiles').insert({
@@ -556,8 +557,15 @@ async function handleSignup() {
         console.error('Failed to save user profile in public database:', dbErr);
       }
     }
-    document.getElementById('authForm').classList.add('hidden');
-    document.getElementById('authSuccess').classList.remove('hidden');
+    
+    if (session) {
+      // Auto-logged in (Confirm Email is disabled on Supabase dashboard)
+      window.location.href = 'index.html';
+    } else {
+      // Requires email verification
+      document.getElementById('authForm').classList.add('hidden');
+      document.getElementById('authSuccess').classList.remove('hidden');
+    }
   }
 }
 
