@@ -7,7 +7,11 @@ const { body, validationResult } = require('express-validator');
 const Groq = require('groq-sdk');
 const { createClient } = require('@supabase/supabase-js');
 
+const path = require('path');
 dotenv.config();
+dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config({ path: path.join(__dirname, '..', 'Backend', '.env') });
+dotenv.config({ path: path.join(__dirname, '..', '..', 'Backend', '.env') });
 
 const app = express();
 app.set('trust proxy', 1);

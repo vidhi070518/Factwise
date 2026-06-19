@@ -536,13 +536,26 @@ async function handleSignup() {
   btn.disabled = true;
   btn.textContent = 'Creating account...';
 
-  const { error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({ email, password });
 
   if (error) {
     errorEl.textContent = error.message;
     btn.disabled = false;
     btn.textContent = 'Create account';
   } else {
+    const user = data?.user;
+    if (user) {
+      try {
+        await supabase.from('profiles').insert({
+          id: user.id,
+          email: user.email,
+          created_at: new Date().toISOString()
+        });
+        console.log('Successfully saved user profile to public database.');
+      } catch (dbErr) {
+        console.error('Failed to save user profile in public database:', dbErr);
+      }
+    }
     document.getElementById('authForm').classList.add('hidden');
     document.getElementById('authSuccess').classList.remove('hidden');
   }
