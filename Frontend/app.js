@@ -372,6 +372,8 @@ function showQuietLoading(state) {
       }, 2800);
     }
   } else {
+    verifyBtn.disabled = false;
+    if (inputText) inputText.disabled = false;
     btnText.textContent = 'Verify Text';
     if (btnLoader) btnLoader.classList.add('hidden');
     if (tracker) tracker.classList.add('hidden');
