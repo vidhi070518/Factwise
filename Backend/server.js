@@ -6,8 +6,6 @@ const helmet = require('helmet');
 const { body, validationResult } = require('express-validator');
 const Groq = require('groq-sdk');
 const { createClient } = require('@supabase/supabase-js');
-const Razorpay = require('razorpay');
-const db = require('./db');
 
 dotenv.config();
 
@@ -18,12 +16,6 @@ const supabase = (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY)
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
   : null;
 
-// Initialize Razorpay SDK
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_placeholder',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || 'placeholder_secret',
-});
-
 // Cache to prevent concurrent verification scans from same session/user
 const activeScans = new Set();
 
@@ -32,34 +24,11 @@ app.use(cors());
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-const checkAndResetVerificationLimit = async (status, { userId, sessionId }) => {
-  const lastReset = status.lastVerificationReset ? new Date(status.lastVerificationReset) : new Date(status.createdAt);
-  const now = new Date();
-  const msPassed = now - lastReset;
-  const hoursPassed = msPassed / (1000 * 60 * 60);
-
-  if (hoursPassed >= 24) {
-    console.log(`24 hours passed since last reset for user/session ${userId || sessionId}. Resetting count.`);
-    const updatedStatus = await db.resetVerificationUsage({
-      userId,
-      sessionId,
-      resetTime: now.toISOString()
-    });
-    return updatedStatus;
-  }
-  return status;
-};
-
-// DB-backed Pro and Free Tier limits middleware
-const checkProAccessLimit = async (req, res, next) => {
-  console.log(`[Limit Flow] 1. Incoming request received at /api/verify`);
-  console.log(`[Limit Flow] 2. Middleware checkProAccessLimit is executing`);
-
-  let { userId, sessionId, email } = req.body;
-  console.log(`[Limit Flow] 3. Request parameters parsed: userId=${userId}, sessionId=${sessionId}, email=${email}`);
+// Middleware to prevent concurrent scans from the same session/user
+const preventConcurrentScans = async (req, res, next) => {
+  let { userId, sessionId } = req.body;
 
   if (!sessionId) {
-    console.log(`[Limit Flow] Validation error: Session ID is missing in request.`);
     return res.status(400).json({ error: 'Session ID is required.' });
   }
 
@@ -67,7 +36,6 @@ const checkProAccessLimit = async (req, res, next) => {
   const scanKey = normalizedUserId || sessionId;
 
   if (activeScans.has(scanKey)) {
-    console.log(`[Limit Flow] Request blocked: verification scan already in progress for key '${scanKey}'.`);
     return res.status(429).json({
       error: 'Verification in progress',
       message: 'A verification request is already in progress for this session. Please wait.'
@@ -77,50 +45,7 @@ const checkProAccessLimit = async (req, res, next) => {
   // Lock session scan
   activeScans.add(scanKey);
   req.scanKey = scanKey;
-
-  try {
-    console.log(`[Limit Flow] 4. Fetching subscription status from database for key: '${scanKey}'`);
-    let status = await db.getOrCreateSubscription({ userId: normalizedUserId, sessionId, email });
-    console.log(`[Limit Flow] 5. Subscription loaded: isPro=${status.isPro}, freeVerifications count=${status.freeVerifications}`);
-    
-    // Check and reset 24h limit
-    status = await checkAndResetVerificationLimit(status, { userId: normalizedUserId, sessionId });
-
-    if (status.isPro) {
-      req.isPro = true;
-      req.freeVerifications = 0;
-      console.log(`[Limit Flow] 8. Request ALLOWED: User is Pro (limit bypassed).`);
-      return next();
-    }
-
-    const blockCondition = (status.freeVerifications >= 5);
-    console.log(`[Limit Flow] 6. Limit block condition check: (freeVerifications >= 5) => ${blockCondition}`);
-
-    if (blockCondition) {
-      activeScans.delete(scanKey);
-      req.scanKey = null;
-      console.log(`[Limit Flow] 7. Middleware BLOCKED request: Session '${sessionId}' has reached the limit (count=${status.freeVerifications}).`);
-      return res.status(403).json({
-        error: 'Free tier limit reached',
-        message: 'You have used all 5 free daily verifications. Upgrade to Pro for unlimited access.',
-        isPro: false,
-        freeVerifications: status.freeVerifications
-      });
-    }
-
-    req.isPro = false;
-    req.freeVerifications = status.freeVerifications;
-    console.log(`[Limit Flow] 8. Request ALLOWED: Free user below limit. Remaining scans: ${5 - status.freeVerifications}/5`);
-    return next();
-  } catch (err) {
-    console.error(`[Limit Flow] Database check failed: ${err.message}`);
-    activeScans.delete(scanKey);
-    req.scanKey = null;
-    return res.status(500).json({
-      error: 'Database error',
-      message: 'Failed to verify subscription status. Please try again.'
-    });
-  }
+  return next();
 };
 
 const globalLimiter = rateLimit({
@@ -173,74 +98,7 @@ app.get('/api/ping', (req, res) => {
   res.json({ ping: 'pong', time: new Date().toISOString() });
 });
 
-// ─── Razorpay Endpoints ───────────────────────────────────────────────────────
-app.get('/api/razorpay-key', (req, res) => {
-  res.json({ keyId: process.env.RAZORPAY_KEY_ID || '' });
-});
 
-app.post('/api/create-order', async (req, res) => {
-  const options = {
-    amount: 29900, // ₹299 in paise (server-side fixed amount)
-    currency: 'INR',
-    receipt: `receipt_order_${Date.now()}`
-  };
-  try {
-    const order = await razorpay.orders.create(options);
-    res.json({ success: true, orderId: order.id, amount: order.amount });
-  } catch (err) {
-    console.error('Razorpay order creation failed:', err.message);
-    res.status(500).json({ error: 'Failed to create payment order. Please try again.' });
-  }
-});
-
-app.post('/api/verify-payment', async (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, userId, sessionId, email } = req.body;
-
-  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-    return res.status(400).json({ error: 'Missing required Razorpay payment fields.' });
-  }
-
-  try {
-    const crypto = require('crypto');
-    const secret = process.env.RAZORPAY_KEY_SECRET || '';
-    const generated_signature = crypto
-      .createHmac('sha256', secret)
-      .update(razorpay_order_id + '|' + razorpay_payment_id)
-      .digest('hex');
-
-    if (generated_signature === razorpay_signature) {
-      const updatedSub = await db.activatePro({ userId, sessionId, email, orderId: razorpay_order_id, paymentId: razorpay_payment_id });
-      res.json({ success: true, message: 'Payment verified successfully. Pro access activated!', subscription: updatedSub });
-    } else {
-      res.status(400).json({ error: 'Payment verification failed. Invalid signature.' });
-    }
-  } catch (err) {
-    console.error('Verify payment error:', err.message);
-    res.status(500).json({ error: 'Internal server error during payment verification.' });
-  }
-});
-
-app.get('/api/check-pro-status', async (req, res) => {
-  const { userId, sessionId } = req.query;
-
-  if (!sessionId && !userId) {
-    return res.status(400).json({ error: 'Either User ID or Session ID is required.' });
-  }
-
-  const normalizedUserId = (userId && typeof userId === 'string' && userId.trim() !== '') ? userId : null;
-
-  try {
-    let status = await db.getOrCreateSubscription({ userId: normalizedUserId, sessionId });
-    
-    // Check and reset 24h limit
-    status = await checkAndResetVerificationLimit(status, { userId: normalizedUserId, sessionId });
-
-    res.json({ success: true, isPro: status.isPro, freeVerifications: status.freeVerifications });
-  } catch (err) {
-    console.error('Check status error:', err.message);
-    res.status(500).json({ error: 'Failed to check subscription status.' });
-  }
-});
 
 // Helper to ensure logical consistency of results
 const ensureLogicalConsistency = (result) => {
@@ -279,7 +137,7 @@ const ensureLogicalConsistency = (result) => {
 };
 
 // ── Verify Route ─────────────────────────────────────────────────────────────
-app.post('/api/verify', checkProAccessLimit, verifyValidation, async (req, res) => {
+app.post('/api/verify', preventConcurrentScans, verifyValidation, async (req, res) => {
 
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -380,26 +238,9 @@ ${text}`
       }
     }
 
-    // Increment free verifications usage if not Pro
-    let updatedVerifications = req.freeVerifications;
-    if (!req.isPro) {
-      try {
-        const normalizedUserId = (req.body.userId && typeof req.body.userId === 'string' && req.body.userId.trim() !== '') ? req.body.userId : null;
-        console.log(`[Limit Flow] 9. Executing incrementVerificationUsage() for sessionId: ${req.body.sessionId}`);
-        const updatedSub = await db.incrementVerificationUsage({ userId: normalizedUserId, sessionId: req.body.sessionId });
-        updatedVerifications = updatedSub.freeVerifications;
-        console.log(`[Limit Flow] 10. Increment executed. Updated verification count in database: ${updatedVerifications}`);
-      } catch (err) {
-        console.error('[Limit Flow] Failed to increment usage count:', err.message);
-        throw err;
-      }
-    }
-
     res.json({
       success: true,
-      result,
-      isPro: req.isPro,
-      freeVerifications: updatedVerifications
+      result
     });
 
   } catch (error) {

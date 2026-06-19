@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Factwise — Premium AI output verification assistant. Verify AI essays, summaries, and code explanations for researchers, students, and professionals." />
+  <meta name="description" content="Factwise — AI output verification assistant. Verify AI essays, summaries, and code explanations for researchers, students, and professionals." />
   <title>Factwise — AI Output Verification Assistant</title>
   <link rel="stylesheet" href="style.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body>
 
@@ -20,8 +19,7 @@
       </div>
       <div class="nav-links">
         <a href="#how-it-works" class="nav-link">How it works</a>
-        <a href="#pricing" class="nav-link">Pricing</a>
-        <button class="btn-outline" onclick="scrollToChecker()">Try Free</button>
+        <button class="btn-outline" onclick="scrollToChecker()">Verify Now</button>
       </div>
     </div>
   </nav>
@@ -29,7 +27,7 @@
   <!-- ── Hero ── -->
   <section class="hero">
     <div class="hero-inner">
-      <div class="hero-badge">5 Free Scans every 24 hours · Designed for Academics & Professionals</div>
+      <div class="hero-badge">Unlimited AI-powered Verification · Designed for Academics & Professionals</div>
       <h1 class="hero-title">
         Don't trust AI outputs blindly.<br />
         <span class="hero-highlight">Verify them.</span>
@@ -70,7 +68,6 @@
           spellcheck="false"
         ></textarea>
         <div class="checker-footer">
-          <span class="checker-limit" id="trialCounterText">5 free scans remaining today</span>
           <button class="btn-primary" id="verifyBtn" onclick="verifyText()">
             <span id="btnText">Verify Text</span>
             <span id="btnLoader" class="btn-loader hidden"></span>
@@ -91,22 +88,7 @@
         </div>
       </div>
 
-      <!-- Premium Paywall Block (Hidden by default) -->
-      <div id="paywallContainer" class="paywall-banner hidden">
-        <h2 class="paywall-title">🔒 Free Daily Scans Completed (5/5)</h2>
-        <p class="paywall-desc">
-          You have used all 5 free daily verifications. Upgrade to Factwise Pro to verify your research, avoid AI misinformation, and unlock unlimited scans.
-        </p>
-        <div class="paywall-features">
-          <div class="paywall-feature-item">Unlimited verification scans</div>
-          <div class="paywall-feature-item">Full verification history & saving</div>
-          <div class="paywall-feature-item">Detailed quote & source breakdowns</div>
-          <div class="paywall-feature-item">Priority access to Llama 3.3 70B model</div>
-        </div>
-        <button class="btn-primary" onclick="openCheckoutModal()">
-          Upgrade to Pro — ₹299/month
-        </button>
-      </div>
+
 
       <!-- Quiet Loading progression tracker (Hidden by default) -->
       <div id="loadingTracker" class="loading-progress hidden">
@@ -207,42 +189,7 @@
     </div>
   </section>
 
-  <!-- ── Pricing ── -->
-  <section class="pricing-section" id="pricing">
-    <div class="section-inner">
-      <h2 class="section-title">Simple pricing</h2>
-      <p class="section-sub">Start checking free. Upgrade to Pro for unlimited research verification.</p>
-      <div class="pricing-cards">
 
-        <div class="pricing-card">
-          <div class="pricing-plan">Free Trial</div>
-          <div class="pricing-price">₹0</div>
-          <ul class="pricing-features">
-            <li>✓ 5 free daily verifications</li>
-            <li>✓ Full claim status breakdown</li>
-            <li>✓ Plain English analysis</li>
-            <li>✓ No signup required</li>
-          </ul>
-          <button class="btn-outline btn-full" onclick="scrollToChecker()">Get started free</button>
-        </div>
-
-        <div class="pricing-card pricing-card-pro">
-          <div class="pricing-badge">Recommended</div>
-          <div class="pricing-plan">Pro</div>
-          <div class="pricing-price">₹299<span>/month</span></div>
-          <ul class="pricing-features">
-            <li>✓ Unlimited verification scans</li>
-            <li>✓ Save verification history logs</li>
-            <li>✓ Interactive text highlighting visualizer</li>
-            <li>✓ Priority Llama-3.3 processing speeds</li>
-            <li>✓ Custom citation & reference notes</li>
-          </ul>
-          <button class="btn-primary btn-full" onclick="openCheckoutModal()">Upgrade to Pro</button>
-        </div>
-
-      </div>
-    </div>
-  </section>
 
   <!-- ── Footer ── -->
   <footer class="footer">
@@ -261,47 +208,7 @@
     </div>
   </footer>
 
-  <!-- ── Razorpay Subscription Modal ── -->
-  <div id="checkoutModal" class="modal-overlay hidden">
-    <div class="modal-card">
-      <button class="modal-close" onclick="closeCheckoutModal()">×</button>
-      <h2 class="modal-title">Upgrade to Factwise Pro</h2>
-      <p class="modal-sub">Verify research, essays, and reports with absolute confidence.</p>
-      
-      <div style="background: var(--bg-3); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 20px; margin-bottom: 20px; text-align: center;">
-        <span style="font-size: 13px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Pro Unlock Plan</span>
-        <span style="font-size: 36px; font-weight: 700; color: var(--text);">₹299</span>
-        <span style="font-size: 14px; color: var(--text-2); display: block; margin-top: 4px;">Unlimited scans & history</span>
-      </div>
 
-      <div style="margin-bottom: 24px;">
-        <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px;">
-          <li style="font-size: 13px; color: var(--text-2); display: flex; align-items: center; gap: 8px;">
-            <span style="color: var(--verified); font-weight: bold;">✓</span> Unlimited verification scans
-          </li>
-          <li style="font-size: 13px; color: var(--text-2); display: flex; align-items: center; gap: 8px;">
-            <span style="color: var(--verified); font-weight: bold;">✓</span> Full verification history logs
-          </li>
-          <li style="font-size: 13px; color: var(--text-2); display: flex; align-items: center; gap: 8px;">
-            <span style="color: var(--verified); font-weight: bold;">✓</span> Priority Llama-3.3 processing speed
-          </li>
-          <li style="font-size: 13px; color: var(--text-2); display: flex; align-items: center; gap: 8px;">
-            <span style="color: var(--verified); font-weight: bold;">✓</span> Support independent software
-          </li>
-        </ul>
-      </div>
-
-      <div style="display: flex; flex-direction: column; gap: 12px;">
-        <p class="auth-error" id="checkoutError" style="margin-top: 0; min-height: auto; text-align: center;"></p>
-        <button class="btn-primary btn-full" id="confirmPaymentBtn" onclick="payWithRazorpay()">
-          Upgrade Now
-        </button>
-        <p style="font-size: 11px; color: var(--text-3); text-align: center; line-height: 1.4; margin: 0;">
-          🔒 Secured by Razorpay. Supports UPI, cards, Netbanking & mobile wallets.
-        </p>
-      </div>
-    </div>
-  </div>
 
 <script type="module" src="app.js"></script>
 </body>

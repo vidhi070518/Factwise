@@ -12,10 +12,6 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ── Auth State ─────────────────────────────────────────────────────────────────
 let currentUser = null;
 
-// ── Session & Pro State Variables ──────────────────────────────────────────────
-let isProStatus = false;
-let freeVerificationsCount = 0;
-
 function getOrCreateSessionId() {
   let sid = localStorage.getItem('factwise_session_id');
   if (!sid) {
@@ -28,21 +24,7 @@ function getOrCreateSessionId() {
   return sid;
 }
 
-async function refreshProStatus() {
-  const sessionId = getOrCreateSessionId();
-  const userId = currentUser?.id || '';
-  try {
-    const response = await fetch(`${BACKEND_URL}/api/check-pro-status?userId=${userId}&sessionId=${sessionId}`);
-    if (response.ok) {
-      const data = await response.json();
-      isProStatus = data.isPro;
-      freeVerificationsCount = data.freeVerifications;
-    }
-  } catch (err) {
-    console.error("Error checking Pro status from backend:", err);
-  }
-  updateVerificationUsageUI();
-}
+
 
 async function initAuth() {
   getOrCreateSessionId();
@@ -58,8 +40,6 @@ async function initAuth() {
     updateNavForGuest();
   }
 
-  await refreshProStatus();
-
   supabase.auth.onAuthStateChange(async (_event, session) => {
     currentUser = session?.user || null;
     if (currentUser) {
@@ -67,7 +47,6 @@ async function initAuth() {
     } else {
       updateNavForGuest();
     }
-    await refreshProStatus();
   });
 }
 
@@ -75,14 +54,10 @@ async function initAuth() {
 function updateNavForUser(user) {
   const navLinks = document.querySelector('.nav-links');
   if (!navLinks) return;
-  const isPro = checkIsPro();
-  const badge = isPro ? '<span class="pricing-badge" style="position:static; margin-left:8px; padding:2px 8px; font-size:10px;">Pro</span>' : '';
   navLinks.innerHTML = `
     <a href="index.html#how-it-works" class="nav-link">How it works</a>
-    ${!isPro ? '<a href="index.html#pricing" class="nav-link">Pricing</a>' : ''}
     <a href="history.html" class="nav-link">My History</a>
-    <span class="nav-email">${user.email}${badge}</span>
-    ${isPro ? '<button class="btn-outline" style="padding: 6px 12px; margin-right: 8px;" onclick="signOutPro()">Reset Pro</button>' : ''}
+    <span class="nav-email">${user.email}</span>
     <button class="btn-outline" onclick="signOut()">Sign out</button>
   `;
 }
@@ -90,18 +65,10 @@ function updateNavForUser(user) {
 function updateNavForGuest() {
   const navLinks = document.querySelector('.nav-links');
   if (!navLinks) return;
-  const isPro = checkIsPro();
-  const badge = isPro ? '<span class="pricing-badge" style="position:static; margin-left:8px; padding:2px 8px; font-size:10px; margin-right:8px;">Pro</span>' : '';
   navLinks.innerHTML = `
     <a href="index.html#how-it-works" class="nav-link">How it works</a>
-    ${!isPro ? '<a href="index.html#pricing" class="nav-link">Pricing</a>' : ''}
-    ${isPro ? `
-      ${badge}
-      <button class="btn-outline" style="padding: 6px 12px; margin-right: 8px;" onclick="signOutPro()">Reset Pro</button>
-    ` : `
-      <a href="login.html" class="nav-link">Log in</a>
-      <button class="btn-primary" onclick="window.location.href='signup.html'">Sign up free</button>
-    `}
+    <a href="login.html" class="nav-link">Log in</a>
+    <button class="btn-primary" onclick="window.location.href='signup.html'">Sign up</button>
   `;
 }
 
@@ -133,77 +100,6 @@ function scrollToChecker() {
   }
 }
 
-// ── Pro State Management & Free Trial Limits ───────────────────────────────────
-function checkIsPro() {
-  return isProStatus;
-}
-
-function signOutPro() {
-  localStorage.removeItem('factwise_session_id');
-  window.location.reload();
-}
-
-function getVerificationCount() {
-  return freeVerificationsCount;
-}
-
-function incrementVerificationCount() {
-  refreshProStatus();
-}
-
-function updateVerificationUsageUI() {
-  const isPro = checkIsPro();
-  const count = getVerificationCount();
-  const remaining = Math.max(0, 5 - count);
-  
-  // Re-sync navbar elements in case Pro status changed dynamically
-  const navLinks = document.querySelector('.nav-links');
-  if (navLinks) {
-    if (currentUser) {
-      updateNavForUser(currentUser);
-    } else {
-      updateNavForGuest();
-    }
-  }
-  
-  const limitText = document.getElementById('trialCounterText');
-  if (limitText) {
-    if (isPro) {
-      limitText.textContent = 'Pro subscription active (Unlimited scans)';
-    } else {
-      limitText.textContent = `${remaining} / 5 free scans remaining today`;
-    }
-  }
-
-  const checkerBox = document.getElementById('checkerBox');
-  const paywallContainer = document.getElementById('paywallContainer');
-  const demoSection = document.getElementById('demoSection');
-  const verifyBtn = document.getElementById('verifyBtn');
-
-  if (!isPro && remaining <= 0) {
-    // Lock inputs & show paywall banner
-    if (inputText) inputText.disabled = true;
-    if (verifyBtn) verifyBtn.disabled = true;
-    if (checkerBox) checkerBox.style.opacity = '0.4';
-    if (paywallContainer) paywallContainer.classList.remove('hidden');
-    if (demoSection) demoSection.classList.add('hidden');
-    showError('Free tier limit reached');
-  } else {
-    // Unlock
-    if (inputText) inputText.disabled = false;
-    if (verifyBtn) verifyBtn.disabled = false;
-    if (checkerBox) checkerBox.style.opacity = '1.0';
-    if (paywallContainer) paywallContainer.classList.add('hidden');
-    if (demoSection) demoSection.classList.remove('hidden');
-    
-    // Hide error box if it's currently displaying the limit reached error
-    const errorTextEl = document.getElementById('errorText');
-    if (errorTextEl && errorTextEl.textContent === 'Free tier limit reached') {
-      hideError();
-    }
-  }
-}
-
 // ── Verify Text Action ─────────────────────────────────────────────────────────
 async function verifyText() {
   const text = inputText.value.trim();
@@ -215,11 +111,6 @@ async function verifyText() {
 
   if (text.length > 10000) {
     showError('Text is too long. Please keep it under 10,000 characters.');
-    return;
-  }
-
-  if (!checkIsPro() && getVerificationCount() >= 5) {
-    showError('Free tier limit reached');
     return;
   }
 
@@ -246,18 +137,11 @@ async function verifyText() {
     console.log(`[Incoming Verify Response] Status: ${response.status}, Payload:`, JSON.stringify(data, null, 2));
 
     if (!response.ok) {
-      if (data.freeVerifications !== undefined) {
-        freeVerificationsCount = data.freeVerifications;
-        updateVerificationUsageUI();
-      }
       showError(data.error || 'Something went wrong. Please try again.');
       return;
     }
 
     if (data.success && data.result) {
-      if (data.isPro !== undefined) isProStatus = data.isPro;
-      if (data.freeVerifications !== undefined) freeVerificationsCount = data.freeVerifications;
-      updateVerificationUsageUI();
       renderResults(data.result);
     } else {
       showError('Could not process the result. Please try again.');
@@ -380,7 +264,7 @@ function showSavePrompt() {
   prompt.id = 'savePrompt';
   prompt.className = 'save-prompt';
   prompt.innerHTML = `
-    <p>🔒 <strong>Sign up free</strong> to save this result and access your verification history.</p>
+    <p>👤 <strong>Create an account</strong> to save this result and access your verification history.</p>
     <button class="btn-primary" onclick="window.location.href='signup.html'">Save my results</button>
   `;
   document.getElementById('results').prepend(prompt);
@@ -488,7 +372,6 @@ function showQuietLoading(state) {
       }, 2800);
     }
   } else {
-    updateVerificationUsageUI();
     btnText.textContent = 'Verify Text';
     if (btnLoader) btnLoader.classList.add('hidden');
     if (tracker) tracker.classList.add('hidden');
@@ -631,133 +514,6 @@ function loadDemo(type) {
   tipText.innerHTML = `${template.result.tip} <br><small style="color:var(--text-3); font-weight:500;">(Demo Sandbox: Loaded high-fidelity analysis model output instantly)</small>`;
 }
 
-// ── Razorpay Payment & Billing Upgrade Modal Controllers ──────────────────────
-function openCheckoutModal() {
-  document.getElementById('checkoutModal').classList.remove('hidden');
-  const errText = document.getElementById('checkoutError');
-  if (errText) errText.textContent = '';
-  const confirmBtn = document.getElementById('confirmPaymentBtn');
-  if (confirmBtn) {
-    confirmBtn.disabled = false;
-    confirmBtn.textContent = 'Upgrade Now';
-  }
-}
-
-function closeCheckoutModal() {
-  document.getElementById('checkoutModal').classList.add('hidden');
-}
-
-async function payWithRazorpay() {
-  const confirmBtn = document.getElementById('confirmPaymentBtn');
-  const checkoutError = document.getElementById('checkoutError');
-  
-  if (!confirmBtn || !checkoutError) return;
-
-  confirmBtn.disabled = true;
-  confirmBtn.textContent = 'Preparing checkout...';
-  checkoutError.textContent = '';
-  
-  try {
-    // 1. Create order on backend
-    const orderRes = await fetch(`${BACKEND_URL}/api/create-order`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    if (!orderRes.ok) {
-      throw new Error('Failed to create order on server.');
-    }
-    const orderData = await orderRes.json();
-    if (!orderData.success || !orderData.orderId) {
-      throw new Error(orderData.error || 'Invalid order response from server.');
-    }
-
-    // 2. Fetch public Razorpay key ID
-    const keyRes = await fetch(`${BACKEND_URL}/api/razorpay-key`);
-    if (!keyRes.ok) {
-      throw new Error('Failed to retrieve payment credentials.');
-    }
-    const { keyId } = await keyRes.json();
-
-    // 3. Open Razorpay Checkout
-    const options = {
-      key: keyId,
-      amount: orderData.amount,
-      currency: 'INR',
-      name: 'Factwise',
-      description: 'Factwise Pro Access',
-      order_id: orderData.orderId,
-      handler: async function (response) {
-        confirmBtn.textContent = 'Verifying payment...';
-        try {
-          // 4. Send payment verification to backend
-          const verifyRes = await fetch(`${BACKEND_URL}/api/verify-payment`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              userId: currentUser?.id || null,
-              sessionId: getOrCreateSessionId(),
-              email: currentUser?.email || null
-            })
-          });
-
-          if (!verifyRes.ok) {
-            const errData = await verifyRes.json();
-            throw new Error(errData.error || 'Server-side payment verification failed.');
-          }
-
-          const verifyData = await verifyRes.json();
-          if (verifyData.success) {
-            confirmBtn.textContent = 'Success!';
-            // Refresh state & close modal
-            await refreshProStatus();
-            setTimeout(() => {
-              closeCheckoutModal();
-              alert("Factwise Pro subscription activated! Thank you for upgrading.");
-            }, 500);
-          } else {
-            throw new Error('Verification failed.');
-          }
-        } catch (verifyErr) {
-          console.error(verifyErr);
-          checkoutError.textContent = verifyErr.message || 'Payment verification failed. Please contact support.';
-          confirmBtn.disabled = false;
-          confirmBtn.textContent = 'Upgrade Now';
-        }
-      },
-      prefill: {
-        email: currentUser?.email || '',
-      },
-      theme: {
-        color: '#6366f1' // Factwise Accent Indigo
-      },
-      modal: {
-        ondismiss: function () {
-          checkoutError.textContent = 'Payment cancelled by user.';
-          confirmBtn.disabled = false;
-          confirmBtn.textContent = 'Upgrade Now';
-        }
-      }
-    };
-
-    const rzp = new Razorpay(options);
-    rzp.on('payment.failed', function (response) {
-      checkoutError.textContent = response.error.description || 'Payment failed. Please try again.';
-      confirmBtn.disabled = false;
-      confirmBtn.textContent = 'Upgrade Now';
-    });
-    rzp.open();
-
-  } catch (err) {
-    console.error(err);
-    checkoutError.textContent = err.message || 'An error occurred during payment checkout initialization.';
-    confirmBtn.disabled = false;
-    confirmBtn.textContent = 'Upgrade Now';
-  }
-}
-
 // ── Auth Forms ─────────────────────────────────────────────────────────────────
 async function handleSignup() {
   const email = document.getElementById('email').value.trim();
@@ -827,9 +583,5 @@ window.handleSignup = handleSignup;
 window.handleLogin = handleLogin;
 window.loadHistory = loadHistory;
 
-// Expose payment & demo features
+// Expose demo features
 window.loadDemo = loadDemo;
-window.openCheckoutModal = openCheckoutModal;
-window.closeCheckoutModal = closeCheckoutModal;
-window.payWithRazorpay = payWithRazorpay;
-window.signOutPro = signOutPro;
