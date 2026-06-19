@@ -36,6 +36,7 @@ const preventConcurrentScans = async (req, res, next) => {
   const scanKey = normalizedUserId || sessionId;
 
   if (activeScans.has(scanKey)) {
+    console.log(`[Concurrency Lock] Scan BLOCKED for key: ${scanKey}. Current activeScans size: ${activeScans.size}`);
     return res.status(429).json({
       error: 'Verification in progress',
       message: 'A verification request is already in progress for this session. Please wait.'
@@ -45,6 +46,7 @@ const preventConcurrentScans = async (req, res, next) => {
   // Lock session scan
   activeScans.add(scanKey);
   req.scanKey = scanKey;
+  console.log(`[Concurrency Lock] Lock ACQUIRED for key: ${scanKey}. Current activeScans size: ${activeScans.size}`);
   return next();
 };
 
@@ -138,22 +140,31 @@ const ensureLogicalConsistency = (result) => {
 
 // ── Verify Route ─────────────────────────────────────────────────────────────
 app.post('/api/verify', preventConcurrentScans, verifyValidation, async (req, res) => {
+  const releaseLock = () => {
+    if (req.scanKey) {
+      activeScans.delete(req.scanKey);
+      console.log(`[Concurrency Lock] Lock RELEASED for key: ${req.scanKey}. Current activeScans size: ${activeScans.size}`);
+      req.scanKey = null;
+    }
+  };
 
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    if (req.scanKey) activeScans.delete(req.scanKey);
-    return res.status(400).json({ error: errors.array()[0].msg });
-  }
-
-  const text = sanitizeText(req.body.text);
-  const userId = req.body.userId || null;
-
-  if (!text || text.length === 0) {
-    if (req.scanKey) activeScans.delete(req.scanKey);
-    return res.status(400).json({ error: 'Text became empty after sanitization. Please try again.' });
-  }
+  // Add response/close event listeners to guarantee cleanup under all termination modes
+  res.on('close', releaseLock);
+  res.on('finish', releaseLock);
 
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ error: errors.array()[0].msg });
+    }
+
+    const text = sanitizeText(req.body.text);
+    const userId = req.body.userId || null;
+
+    if (!text || text.length === 0) {
+      return res.status(400).json({ error: 'Text became empty after sanitization. Please try again.' });
+    }
+
     const response = await client.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       max_tokens: 1024,
@@ -238,18 +249,16 @@ ${text}`
       }
     }
 
-    res.json({
+    return res.json({
       success: true,
       result
     });
 
   } catch (error) {
     console.error('Verification error:', error.message);
-    res.status(500).json({ error: 'Verification failed. Please try again in a moment.' });
+    return res.status(500).json({ error: 'Verification failed. Please try again in a moment.' });
   } finally {
-    if (req.scanKey) {
-      activeScans.delete(req.scanKey);
-    }
+    releaseLock();
   }
 });
 
