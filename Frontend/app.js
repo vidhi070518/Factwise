@@ -1,4 +1,6 @@
-const BACKEND_URL = 'https://factwise-brown.vercel.app';
+const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:5000'
+  : 'https://factwise-brown.vercel.app';
 
 
 const SUPABASE_URL = 'https://dnxzkzpolkmwlhaqnfyy.supabase.co';
@@ -29,22 +31,54 @@ function getOrCreateSessionId() {
 async function initAuth() {
   getOrCreateSessionId();
 
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session) {
-    currentUser = session.user;
-    updateNavForUser(currentUser);
-    if (window.location.pathname.includes('history.html')) {
-      loadHistory();
+  console.log('[Auth Diagnostic] Checking for existing Supabase session...');
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error) {
+      console.error('[Auth Diagnostic] Failed to get session on init:', error.message);
     }
-  } else {
-    updateNavForGuest();
+    
+    if (session) {
+      currentUser = session.user;
+      console.log('[Auth Diagnostic] Session restored successfully on page load:', {
+        userId: currentUser.id,
+        email: currentUser.email,
+        expiresAt: new Date(session.expires_at * 1000).toLocaleString()
+      });
+      updateNavForUser(currentUser);
+      if (window.location.pathname.includes('history.html')) {
+        loadHistory();
+      }
+    } else {
+      console.log('[Auth Diagnostic] No active session found on page load. User is Guest.');
+      updateNavForGuest();
+    }
+  } catch (err) {
+    console.error('[Auth Diagnostic] Critical error during initAuth getSession:', err);
   }
 
-  supabase.auth.onAuthStateChange(async (_event, session) => {
+  console.log('[Auth Diagnostic] Registering auth state change listener...');
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    console.log(`[Auth Diagnostic] Auth State Changed! Event: ${event}`, {
+      hasSession: !!session,
+      userId: session?.user?.id,
+      email: session?.user?.email
+    });
+    
     currentUser = session?.user || null;
     if (currentUser) {
+      console.log(`[Auth Diagnostic] Session active (Event: ${event}) for user: ${currentUser.email}`);
       updateNavForUser(currentUser);
+      
+      if (window.location.pathname.includes('history.html')) {
+        const historyList = document.getElementById('historyList');
+        if (historyList && (historyList.innerHTML.includes('Loading') || historyList.innerHTML.includes('Could not load'))) {
+          console.log('[Auth Diagnostic] Triggering history load due to auth state change...');
+          loadHistory();
+        }
+      }
     } else {
+      console.log(`[Auth Diagnostic] Session cleared (Event: ${event}).`);
       updateNavForGuest();
     }
   });
@@ -74,7 +108,17 @@ function updateNavForGuest() {
 
 // ── Sign Out ───────────────────────────────────────────────────────────────────
 async function signOut() {
-  await supabase.auth.signOut();
+  console.log('[Auth Diagnostic] signOut() initiated by user:', currentUser?.email);
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('[Auth Diagnostic] signOut error:', error.message);
+    } else {
+      console.log('[Auth Diagnostic] signOut succeeded. Session cleared.');
+    }
+  } catch (err) {
+    console.error('[Auth Diagnostic] signOut unhandled error:', err);
+  }
   currentUser = null;
   window.location.href = 'index.html';
 }
@@ -535,37 +579,44 @@ async function handleSignup() {
 
   btn.disabled = true;
   btn.textContent = 'Creating account...';
+  errorEl.textContent = '';
 
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  console.log(`[Auth Diagnostic] handleSignup() signup attempt started for email: ${email}`);
 
-  if (error) {
-    errorEl.textContent = error.message;
-    btn.disabled = false;
-    btn.textContent = 'Create account';
-  } else {
-    const user = data?.user;
-    const session = data?.session;
-    if (user) {
-      try {
-        await supabase.from('profiles').insert({
-          id: user.id,
-          email: user.email,
-          created_at: new Date().toISOString()
-        });
-        console.log('Successfully saved user profile to public database.');
-      } catch (dbErr) {
-        console.error('Failed to save user profile in public database:', dbErr);
+  try {
+    const { data, error } = await supabase.auth.signUp({ email, password });
+
+    if (error) {
+      console.error('[Auth Diagnostic] handleSignup() signup failed:', error.message);
+      errorEl.textContent = error.message;
+      btn.disabled = false;
+      btn.textContent = 'Create account';
+    } else {
+      const user = data?.user;
+      const session = data?.session;
+      
+      console.log('[Auth Diagnostic] handleSignup() signup call succeeded:', {
+        userId: user?.id,
+        email: user?.email,
+        hasSession: !!session
+      });
+
+      // Note: public.profiles table does not exist in the database and is unused, so insertion is removed.
+      
+      if (session) {
+        console.log('[Auth Diagnostic] handleSignup() session created immediately. Auto-logged in successfully.');
+        window.location.href = 'index.html';
+      } else {
+        console.log('[Auth Diagnostic] handleSignup() signup completed but session is null. Email confirmation is enabled/required on Supabase dashboard.');
+        document.getElementById('authForm').classList.add('hidden');
+        document.getElementById('authSuccess').classList.remove('hidden');
       }
     }
-    
-    if (session) {
-      // Auto-logged in (Confirm Email is disabled on Supabase dashboard)
-      window.location.href = 'index.html';
-    } else {
-      // Requires email verification
-      document.getElementById('authForm').classList.add('hidden');
-      document.getElementById('authSuccess').classList.remove('hidden');
-    }
+  } catch (err) {
+    console.error('[Auth Diagnostic] handleSignup() unexpected error:', err);
+    errorEl.textContent = 'An unexpected error occurred. Please try again.';
+    btn.disabled = false;
+    btn.textContent = 'Create account';
   }
 }
 
@@ -582,15 +633,31 @@ async function handleLogin() {
 
   btn.disabled = true;
   btn.textContent = 'Logging in...';
+  errorEl.textContent = '';
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  console.log(`[Auth Diagnostic] handleLogin() login attempt started for email: ${email}`);
 
-  if (error) {
-    errorEl.textContent = error.message;
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      console.error('[Auth Diagnostic] handleLogin() login failed:', error.message);
+      errorEl.textContent = error.message;
+      btn.disabled = false;
+      btn.textContent = 'Log in';
+    } else {
+      console.log('[Auth Diagnostic] handleLogin() login call succeeded:', {
+        userId: data.user?.id,
+        email: data.user?.email,
+        hasSession: !!data.session
+      });
+      window.location.href = 'index.html';
+    }
+  } catch (err) {
+    console.error('[Auth Diagnostic] handleLogin() unexpected error:', err);
+    errorEl.textContent = 'An unexpected error occurred. Please try again.';
     btn.disabled = false;
     btn.textContent = 'Log in';
-  } else {
-    window.location.href = 'index.html';
   }
 }
 
