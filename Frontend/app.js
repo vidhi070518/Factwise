@@ -52,6 +52,18 @@ async function initAuth() {
     } else {
       console.log('[Auth Diagnostic] No active session found on page load. User is Guest.');
       updateNavForGuest();
+      
+      // Check for success params on login.html load
+      if (window.location.pathname.includes('login.html')) {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('signup') === 'success') {
+          const errorEl = document.getElementById('authError');
+          if (errorEl) {
+            errorEl.textContent = 'Account created successfully! Please log in below.';
+            errorEl.style.color = 'var(--verified)';
+          }
+        }
+      }
     }
   } catch (err) {
     console.error('[Auth Diagnostic] Critical error during initAuth getSession:', err);
@@ -569,17 +581,20 @@ async function handleSignup() {
 
   if (!email || !password) {
     errorEl.textContent = 'Please fill in all fields.';
+    errorEl.style.color = 'var(--incorrect)';
     return;
   }
 
   if (password.length < 6) {
     errorEl.textContent = 'Password must be at least 6 characters.';
+    errorEl.style.color = 'var(--incorrect)';
     return;
   }
 
   btn.disabled = true;
   btn.textContent = 'Creating account...';
   errorEl.textContent = '';
+  errorEl.style.color = 'var(--incorrect)';
 
   console.log(`[Auth Diagnostic] handleSignup() signup attempt started for email: ${email}`);
 
@@ -607,9 +622,8 @@ async function handleSignup() {
         console.log('[Auth Diagnostic] handleSignup() session created immediately. Auto-logged in successfully.');
         window.location.href = 'index.html';
       } else {
-        console.log('[Auth Diagnostic] handleSignup() signup completed but session is null. Email confirmation is enabled/required on Supabase dashboard.');
-        document.getElementById('authForm').classList.add('hidden');
-        document.getElementById('authSuccess').classList.remove('hidden');
+        console.log('[Auth Diagnostic] handleSignup() signup completed but session is null. Redirecting to login...');
+        window.location.href = 'login.html?signup=success';
       }
     }
   } catch (err) {
@@ -628,12 +642,14 @@ async function handleLogin() {
 
   if (!email || !password) {
     errorEl.textContent = 'Please fill in all fields.';
+    errorEl.style.color = 'var(--incorrect)';
     return;
   }
 
   btn.disabled = true;
   btn.textContent = 'Logging in...';
   errorEl.textContent = '';
+  errorEl.style.color = 'var(--incorrect)';
 
   console.log(`[Auth Diagnostic] handleLogin() login attempt started for email: ${email}`);
 
