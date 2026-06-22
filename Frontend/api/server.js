@@ -267,6 +267,47 @@ ${text}`
   }
 });
 
+// ─── Backend Signup Route ───────────────────────────────────────────────────
+app.post('/api/signup', async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  }
+
+  if (!supabase) {
+    return res.status(500).json({ error: 'Supabase client is not configured on the server.' });
+  }
+
+  try {
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true
+    });
+
+    if (error) {
+      console.error('[Backend Signup] Admin createUser error:', error.message);
+      return res.status(error.status || 400).json({ error: error.message });
+    }
+
+    return res.json({
+      success: true,
+      user: {
+        id: data.user.id,
+        email: data.user.email
+      }
+    });
+  } catch (error) {
+    console.error('[Backend Signup] Unexpected error:', error.message);
+    return res.status(500).json({ error: 'An unexpected signup error occurred.' });
+  }
+});
+
 // ─── Get verification history for a user ─────────────────────────────────────
 app.get('/api/history/:userId', async (req, res) => {
   const { userId } = req.params;

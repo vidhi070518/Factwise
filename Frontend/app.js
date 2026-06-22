@@ -599,31 +599,32 @@ async function handleSignup() {
   console.log(`[Auth Diagnostic] handleSignup() signup attempt started for email: ${email}`);
 
   try {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const response = await fetch(`${BACKEND_URL}/api/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
 
-    if (error) {
-      console.error('[Auth Diagnostic] handleSignup() signup failed:', error.message);
-      errorEl.textContent = error.message;
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('[Auth Diagnostic] handleSignup() signup failed:', data.error);
+      errorEl.textContent = data.error || 'Signup failed. Please try again.';
       btn.disabled = false;
       btn.textContent = 'Create account';
     } else {
-      const user = data?.user;
-      const session = data?.session;
-      
-      console.log('[Auth Diagnostic] handleSignup() signup call succeeded:', {
-        userId: user?.id,
-        email: user?.email,
-        hasSession: !!session
-      });
+      console.log('[Auth Diagnostic] handleSignup() signup call succeeded:', data);
 
-      // Note: public.profiles table does not exist in the database and is unused, so insertion is removed.
-      
-      if (session) {
-        console.log('[Auth Diagnostic] handleSignup() session created immediately. Auto-logged in successfully.');
-        window.location.href = 'index.html';
-      } else {
-        console.log('[Auth Diagnostic] handleSignup() signup completed but session is null. Redirecting to login...');
+      // Auto-login after successful signup since the user is pre-confirmed on the server
+      console.log('[Auth Diagnostic] Attempting client-side login...');
+      const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (loginError) {
+        console.error('[Auth Diagnostic] Auto-login failed:', loginError.message);
         window.location.href = 'login.html?signup=success';
+      } else {
+        console.log('[Auth Diagnostic] Auto-login succeeded!');
+        window.location.href = 'index.html';
       }
     }
   } catch (err) {
@@ -633,6 +634,7 @@ async function handleSignup() {
     btn.textContent = 'Create account';
   }
 }
+
 
 async function handleLogin() {
   const email = document.getElementById('email').value.trim();
