@@ -889,6 +889,7 @@ body {
   color: var(--text-2);
   margin-bottom: 8px;
   line-height: 1.6;
+  white-space: pre-wrap;
 }
 
 .history-summary {

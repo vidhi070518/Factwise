@@ -369,7 +369,7 @@ async function loadHistory() {
           <span class="history-verdict verdict-${item.overall}">${icons[item.overall] || '🔍'} ${labelText}</span>
           <span class="history-date">${date}</span>
         </div>
-        <p class="history-text">${escapeHTML(item.input_text.substring(0, 120))}...</p>
+        <p class="history-text">${escapeHTML(item.input_text)}</p>
         <p class="history-summary">${escapeHTML(item.summary)}</p>
       `;
       container.appendChild(card);
