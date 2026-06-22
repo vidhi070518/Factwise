@@ -93,6 +93,7 @@ app.get('/api/health', (req, res) => {
     status: 'Factwise backend is running',
     useSupabase: !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY),
     supabaseURL: process.env.SUPABASE_URL ? 'Configured' : 'Missing',
+    supabaseURLVal: process.env.SUPABASE_URL || 'None',
     supabaseKey: process.env.SUPABASE_SERVICE_KEY ? 'Configured' : 'Missing',
     useGroq: !!process.env.GROQ_API_KEY,
     groqKey: process.env.GROQ_API_KEY ? 'Configured' : 'Missing',
