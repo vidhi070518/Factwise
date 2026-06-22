@@ -24,6 +24,42 @@
       "dest": "api/index.js"
     },
     {
+      "src": "/index.html",
+      "headers": { "Location": "/" },
+      "status": 308
+    },
+    {
+      "src": "/login.html",
+      "headers": { "Location": "/login" },
+      "status": 308
+    },
+    {
+      "src": "/signup.html",
+      "headers": { "Location": "/signup" },
+      "status": 308
+    },
+    {
+      "src": "/history.html",
+      "headers": { "Location": "/history" },
+      "status": 308
+    },
+    {
+      "src": "/login",
+      "dest": "Frontend/login.html"
+    },
+    {
+      "src": "/signup",
+      "dest": "Frontend/signup.html"
+    },
+    {
+      "src": "/history",
+      "dest": "Frontend/history.html"
+    },
+    {
+      "src": "/",
+      "dest": "Frontend/index.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "Frontend/$1"
     }

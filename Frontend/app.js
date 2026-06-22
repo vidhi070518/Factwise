@@ -46,7 +46,7 @@ async function initAuth() {
         expiresAt: new Date(session.expires_at * 1000).toLocaleString()
       });
       updateNavForUser(currentUser);
-      if (window.location.pathname.includes('history.html')) {
+      if (window.location.pathname.includes('history.html') || window.location.pathname.endsWith('/history')) {
         loadHistory();
       }
     } else {
@@ -54,7 +54,7 @@ async function initAuth() {
       updateNavForGuest();
       
       // Check for success params on login.html load
-      if (window.location.pathname.includes('login.html')) {
+      if (window.location.pathname.includes('login.html') || window.location.pathname.endsWith('/login')) {
         const params = new URLSearchParams(window.location.search);
         if (params.get('signup') === 'success') {
           const errorEl = document.getElementById('authError');
@@ -82,7 +82,7 @@ async function initAuth() {
       console.log(`[Auth Diagnostic] Session active (Event: ${event}) for user: ${currentUser.email}`);
       updateNavForUser(currentUser);
       
-      if (window.location.pathname.includes('history.html')) {
+      if (window.location.pathname.includes('history.html') || window.location.pathname.endsWith('/history')) {
         const historyList = document.getElementById('historyList');
         if (historyList && (historyList.innerHTML.includes('Loading') || historyList.innerHTML.includes('Could not load'))) {
           console.log('[Auth Diagnostic] Triggering history load due to auth state change...');
